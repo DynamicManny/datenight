@@ -172,66 +172,77 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 <script>
 // LOGIC START
 var POOL = [
-  ['Goodnight note','Send a voice note just to say goodnight','W'],
-  ['Same meal','Cook the same meal on video and eat together','C'],
-  ['Song swap','Share a song and explain why it made you think of them','W'],
-  ['Sky photo','Send a photo of the sky where you are right now','W'],
-  ['Dance break','Dance together on camera for one full song','C'],
-  ['Read a letter','Write them a short letter and read it out loud','W'],
-  ['New inside joke','Invent a brand new inside joke together','C'],
-  ['First memory','Tell them your earliest memory','C'],
-  ['Silly filters','Spend five minutes on the silliest filters you can find','C'],
-  ['Movie night','Watch the same movie at the same time','C'],
-  ['Home tour','Give them a full video tour of where you are','C'],
-  ['Meet a pet','Introduce them to a pet, a plant, or anything alive near you','C'],
-  ['Quick portrait','Draw a portrait of them in under a minute','C'],
-  ['Big compliment','Give them a compliment they will remember','W'],
-  ['Early good morning','Send a good morning message before they wake up','W'],
-  ['Shared playlist','Add five songs to a playlist you both share','W'],
-  ['Dream trip','Plan a dream trip together, even a pretend one','C'],
-  ['New word','Learn a word in a new language together','C'],
-  ['Kid photo','Show them a photo of you as a kid and tell the story','C'],
-  ['Scary story','Tell a scary story with the lights low','C'],
-  ['Quiz me','Make a five question quiz about yourself and quiz them','C'],
-  ['Surprise snack','Order them a snack or a drink as a surprise','W'],
-  ['New nicknames','Come up with a brand new nickname for each other','C'],
-  ['Stretch together','Do a short workout or stretch together on video','C'],
-  ['Floor picnic','Have a picnic on video, even if it is on the floor','C'],
-  ['Thank you','Tell them one thing you are thankful for about them','W'],
-  ['Movie scene','Act out a movie scene together','C'],
-  ['Read aloud','Read a page of a book out loud to them','C'],
-  ['Wallpaper story','Show your phone wallpaper and explain it','C'],
-  ['Favorite spot','Show them your favorite place nearby','W'],
-  ['Coffee date','Have a coffee or tea date on video','C'],
-  ['Bad singing','Sing a line of their favorite song, badly','C'],
-  ['Rate the day','Rate your day out of ten and defend the number','W'],
-  ['Hidden talent','Show them a talent they have never seen','C'],
-  ['Three wishes','Share three things you want to do together','C'],
-  ['Where am I?','Send clues and make them guess where you are','W'],
-  ['Impression','Do an impression of them, to their face','C'],
-  ['Same sky','Look at the same sky together for five minutes','C'],
-  ['Walk and talk','Take a walk on a call and describe what you see','C'],
-  ['Past bedtime','Stay up talking past your usual bedtime','C'],
-  ['Little surprise','Plan or send a small surprise to their door','W'],
-  ['A fear','Share a fear you have not told many people','C'],
-  ['Three wins','Name three small things that went right today','W'],
-  ['Mirror game','Copy each other’s moves like a mirror for one minute','C'],
-  ['Photo dump','Send five photos from your week with captions','W'],
-  ['Recipe swap','Swap a recipe and try each other’s','W'],
-  ['Future note','Write a note to open on the day you meet','W'],
-  ['Their dare','Do a dare they pick, on camera','C'],
-  ['Worst joke','Tell your worst joke with a perfectly straight face','C'],
-  ['Favorite word','Teach them a favorite word or phrase','C'],
-  ['Slow dance','Slow dance together on video','C'],
-  ['Handwriting','Write a sentence by hand and show it to the camera','C'],
-  ['Sleep on call','Fall asleep on a call together','C'],
-  ['First day plan','Plan the first day you will spend together in person','C'],
-  ['Outfit story','Tell them what you wore today and why','W'],
-  ['Countdown','Make a countdown to the next time you meet','W'],
-  ['Fun fact','Teach them a fun fact they did not know','W'],
-  ['Weather report','Describe your weather and what you wish you were doing in it','W'],
-  ['Tiny apology','Apologize for something small and silly from this month','W'],
-  ['Say it','Say something you have been holding back','C']
+  ['Dance break','Dance together on camera for one full song','Fun'],
+  ['Silly filters','Spend five minutes on the silliest filters you can find','Fun'],
+  ['Movie scene','Act out a movie scene together','Fun'],
+  ['Quick portrait','Draw a portrait of them in under a minute','Fun'],
+  ['Mirror game','Copy each other’s moves like a mirror for one minute','Fun'],
+  ['Their dare','Do a dare they pick, on camera','Fun'],
+  ['Worst joke','Tell your worst joke with a perfectly straight face','Fun'],
+  ['Bad singing','Sing a line of their favorite song, badly','Fun'],
+  ['Impression','Do an impression of them, to their face','Fun'],
+  ['Hidden talent','Show them a talent they have never seen','Fun'],
+  ['Quiz me','Make a five question quiz about yourself and quiz them','Fun'],
+  ['New inside joke','Invent a brand new inside joke together','Fun'],
+  ['New nicknames','Come up with a brand new nickname for each other','Fun'],
+  ['Slow dance','Slow dance together on video','Fun'],
+  ['Stretch together','Do a short stretch or workout together on video','Fun'],
+  ['Coffee date','Have a coffee or tea date on video','Fun'],
+  ['Handwriting','Write a sentence by hand and show it to the camera','Fun'],
+  ['Home tour','Give them a video tour of the room you are in','Fun'],
+  ['Meet a pet','Introduce them to a pet, a plant, or anything alive near you','Fun'],
+  ['Wallpaper story','Show your phone wallpaper and explain it','Fun'],
+  ['Camera roll','Show five photos from your camera roll and tell the story of each','Fun'],
+  ['Favorite corner','Show them your favorite spot in your home','Fun'],
+  ['Scary story','Tell a scary story with the lights low','Fun'],
+  ['Walk and talk','Take a walk on the call and describe what you see','Fun'],
+  ['Same sky','Look at the same sky together for five minutes','Fun'],
+  ['Build a playlist','Add five songs together to a shared playlist','Fun'],
+  ['Song swap','Play a song and explain why it made you think of them','Fun'],
+  ['First memory','Tell them your earliest memory','Deep'],
+  ['Kid photo','Show them a photo of you as a kid and tell the story','Deep'],
+  ['A fear','Share a fear you have not told many people','Deep'],
+  ['Say it','Say something you have been holding back','Deep'],
+  ['Rate the day','Rate your day out of ten and defend the number','Deep'],
+  ['Three wins','Name three small things that went right today','Deep'],
+  ['Thank you','Tell them one thing you are thankful for about them','Deep'],
+  ['Big compliment','Give them a compliment they will remember','Deep'],
+  ['Tiny apology','Apologize for something small and silly from this month','Deep'],
+  ['Fun fact','Teach them a fun fact they did not know','Deep'],
+  ['Favorite word','Teach them a favorite word or phrase','Deep'],
+  ['New word','Learn a word in a new language together','Deep'],
+  ['Past bedtime','Stay up talking past your usual bedtime','Deep'],
+  ['Read aloud','Read a page of a book out loud to them','Deep'],
+  ['Read a letter','Write them a short letter and read it out loud','Deep'],
+  ['Felt cared for','Tell them about a time you felt truly cared for','Deep'],
+  ['Proud moment','Share something you are proud of and never bragged about','Deep'],
+  ['Hard season','Share a hard season that shaped who you are','Deep'],
+  ['Best advice','Share the best advice you ever received','Deep'],
+  ['Who you admire','Tell them about someone you look up to and why','Deep'],
+  ['Do over','Share something you would do differently if you could','Deep'],
+  ['Perfect day','Describe your perfect ordinary day','Deep'],
+  ['Why I smile','Tell them what you enjoy most about talking with them','Deep'],
+  ['First impression','Tell them what you thought when you first met or heard of them','Deep'],
+  ['Dream trip','Plan a dream trip together, even a pretend one','Dreams'],
+  ['Three wishes','Share three things you want to do together','Dreams'],
+  ['First day plan','Plan the first day you will spend together in person','Dreams'],
+  ['Note to future us','Write a note to open on the day you meet','Dreams'],
+  ['Home you want','Describe the home you want to build one day','Dreams'],
+  ['Five years','Describe where you want to be in five years','Dreams'],
+  ['Bucket list','Add three things to a shared bucket list','Dreams'],
+  ['Pray together','Pray together out loud, even a short prayer','Faith'],
+  ['Favorite verse','Share a Bible verse that means a lot to you and why','Faith'],
+  ['Worship song','Play a worship song that moves you and say why','Faith'],
+  ['Faith story','Tell how faith showed up in your life growing up','Faith'],
+  ['Answered prayer','Share a prayer that was answered in a way you did not expect','Faith'],
+  ['Church memory','Tell your favorite church memory','Faith'],
+  ['Pray for them','Ask what they want prayer for, then pray for it','Faith'],
+  ['Thankful to God','Name three things you are thankful to God for','Faith'],
+  ['Read Scripture','Read a short passage of Scripture out loud together','Faith'],
+  ['Faith tested','Share a time your faith was tested','Faith'],
+  ['Bless them','Say a blessing over the other person','Faith'],
+  ['Faith at home','Share what faith in your future home would look like','Faith'],
+  ['Ideal Sunday','Describe what an ideal Sunday looks like for you','Faith']
 ];
 
 function xmur3(str){
@@ -265,12 +276,21 @@ function shuffled(arr, seedStr){
 }
 // Two disjoint cards of 24 squares each, laid out 5x5 with a free square in the middle (cell 12). Cell value is a POOL index, or -1 for free.
 function buildCards(seed){
-  var order = shuffled(POOL.map(function(_, i){ return i; }), seed + ':pool');
+  // Each card gets a balanced mix: 9 fun, 8 get-to-know-you, 3 dreams, 4 faith. The two cards never share a square.
+  var QUOTA = {Fun: 9, Deep: 8, Dreams: 3, Faith: 4};
+  var picks = [[], []];
+  Object.keys(QUOTA).forEach(function(cat){
+    var ids = [];
+    POOL.forEach(function(q, i){ if (q[2] === cat) ids.push(i); });
+    var order = shuffled(ids, seed + ':' + cat), n = QUOTA[cat];
+    picks[0] = picks[0].concat(order.slice(0, n));
+    picks[1] = picks[1].concat(order.slice(n, n * 2));
+  });
   var cards = [];
   for (var p = 0; p < 2; p++){
-    var picks = shuffled(order.slice(p * 24, p * 24 + 24), seed + ':layout' + p);
+    var laid = shuffled(picks[p], seed + ':layout' + p);
     var cells = [], k = 0;
-    for (var c = 0; c < 25; c++) cells.push(c === 12 ? -1 : picks[k++]);
+    for (var c = 0; c < 25; c++) cells.push(c === 12 ? -1 : laid[k++]);
     cards.push(cells);
   }
   return cards;
@@ -519,7 +539,7 @@ function reduce(events, baseSeed){
       if (idx === -1){ g += '<div class="cell free" aria-label="Free space">FREE</div>'; continue; }
       var sq = POOL[idx], st = S.stamped[view].has(i);
       var cls = 'cell' + (st ? ' st' + view : '') + (pendSq[i] ? ' pend' : '') + (inLine.has(i) ? ' line' : '');
-      g += '<button type="button" class="' + cls + '" data-sq="' + i + '" aria-label="' + esc(sq[1]) + (st ? ', approved' : (pendSq[i] ? ', waiting for approval' : '')) + '"><span class="tg">' + sq[2] + '</span>' + esc(sq[0]) + (st ? CHECK : '') + '</button>';
+      g += '<button type="button" class="' + cls + '" data-sq="' + i + '" aria-label="' + esc(sq[1]) + (st ? ', approved' : (pendSq[i] ? ', waiting for approval' : '')) + '">' + esc(sq[0]) + (st ? CHECK : '') + '</button>';
     }
     $('grid').innerHTML = g;
 
@@ -538,7 +558,7 @@ function reduce(events, baseSeed){
     Object.keys(S.pending).forEach(function(k){ var c = S.pending[k]; if (c.p === owner && c.sq === sq) pend = c; });
     var mine = owner === me, other = n[1 - me];
     var h = '<div class="sheet-bg" id="sbg"><div class="sheet" role="dialog" aria-modal="true">';
-    h += '<div class="eyebrow"><span>' + (q[2] === 'C' ? 'Best on a call' : 'Any time this week') + '</span><span>' + (mine ? 'Your square' : esc(n[owner]) + '’s square') + '</span></div>';
+    h += '<div class="eyebrow"><span>' + ({Fun: 'Just for fun', Deep: 'Get to know me', Dreams: 'Dreaming together', Faith: 'Faith'}[q[2]] || q[2]) + '</span><span>' + (mine ? 'Your square' : esc(n[owner]) + '’s square') + '</span></div>';
     h += '<h3>' + esc(q[1]) + '</h3>';
     if (stamped){
       var note = S.notes[owner][sq];
