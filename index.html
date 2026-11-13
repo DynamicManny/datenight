@@ -3,12 +3,54 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="refresh" content="0; url=bingo/">
-<title>Date Night</title>
-<link rel="canonical" href="bingo/">
-<script>location.replace("bingo/");</script>
+<meta name="theme-color" content="#0e1326">
+<title>Khadi × Manny</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Caveat:wght@500;700&family=DM+Mono:wght@400;500&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0e1326;--ink2:#161d3a;--text:#e9ecfa;--mute:#9aa4cf;--lamp:#ffc857;--a:#ff7a6b;--b:#62c8ff;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--ink) radial-gradient(900px 520px at 50% -12%,#212c5c,transparent 70%);color:var(--text);font-family:"Hanken Grotesk",system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+.sky{position:fixed;inset:0;z-index:-1;animation:tw 7s ease-in-out infinite alternate;
+ background-image:radial-gradient(1.6px 1.6px at 8% 14%,#fff 50%,transparent 52%),radial-gradient(1.2px 1.2px at 22% 38%,#cfd8ff 50%,transparent 52%),radial-gradient(1.8px 1.8px at 37% 9%,#fff 50%,transparent 52%),radial-gradient(1.6px 1.6px at 66% 12%,#fff 50%,transparent 52%),radial-gradient(1.2px 1.2px at 79% 33%,#cfd8ff 50%,transparent 52%),radial-gradient(1.8px 1.8px at 91% 18%,#fff 50%,transparent 52%),radial-gradient(1.2px 1.2px at 14% 62%,#fff 50%,transparent 52%),radial-gradient(1.6px 1.6px at 46% 71%,#cfd8ff 50%,transparent 52%),radial-gradient(1.6px 1.6px at 88% 78%,#ffe9b0 50%,transparent 52%),radial-gradient(1.2px 1.2px at 30% 88%,#fff 50%,transparent 52%)}
+@keyframes tw{from{opacity:.45}to{opacity:1}}
+.stripe{height:10px;background:repeating-linear-gradient(135deg,#d9433b 0 14px,#f4f4f4 14px 28px,#2f5fd0 28px 42px,#f4f4f4 42px 56px)}
+.wrap{max-width:480px;margin:0 auto;padding:34px 18px 50px;text-align:center}
+.mark{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:clamp(2.2rem,11vw,3.5rem);line-height:1;margin:0;white-space:nowrap}
+.mark .a{color:var(--a)}.mark .b{color:var(--b)}.mark i{font-family:Caveat,cursive;font-style:normal;color:var(--lamp);font-size:.8em}
+.tag{font-family:"DM Mono",monospace;font-size:.76rem;letter-spacing:.18em;text-transform:uppercase;color:var(--mute);margin:10px 0 26px}
+.link{display:block;position:relative;height:56px;margin:0 auto 28px;width:78%}
+.link svg{width:100%;height:100%;overflow:visible}
+.link path{stroke-dasharray:6 8;animation:march 2.4s linear infinite}
+@keyframes march{to{stroke-dashoffset:-56}}
+.games{display:grid;gap:14px;text-align:left}
+.g{display:block;text-decoration:none;color:#161a33;background:#f1f3fb;border-radius:20px;padding:20px 18px 18px;border-top:8px solid transparent;border-image:repeating-linear-gradient(135deg,#d9433b 0 14px,#f4f4f4 14px 28px,#2f5fd0 28px 42px,#f4f4f4 42px 56px) 8;box-shadow:0 14px 40px rgba(0,0,0,.35);transition:transform .15s ease;position:relative}
+.g:active{transform:scale(.985)}
+.g:nth-child(1){transform:rotate(-1deg)}.g:nth-child(2){transform:rotate(.9deg)}
+.g small{font-family:"DM Mono",monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:#5b6390}
+.g h2{font-family:"Bricolage Grotesque",sans-serif;font-size:1.7rem;line-height:1.05;margin:6px 0 4px}
+.g p{margin:0;color:#4a5280;font-size:.95rem}
+.g .go{position:absolute;right:16px;bottom:14px;font-family:Caveat,cursive;font-weight:700;font-size:1.5rem;color:#c58a00}
+.mini{display:flex;gap:4px;margin-top:12px}
+.mini b{width:18px;height:18px;border-radius:4px;background:#dfe3f3}.mini b.k{background:var(--a)}.mini b.m{background:var(--b)}
+.mini svg{width:96px;height:22px}
+@media (prefers-reduced-motion:reduce){.sky,.link path{animation:none}.g{transform:none!important}}
+</style>
 </head>
-<body style="background:#0e1326;color:#e9ecfa;font-family:system-ui,sans-serif">
-<p style="padding:16px"><a href="bingo/" style="color:#ffc857">Open Date Night Bingo</a></p>
+<body>
+<div class="sky" aria-hidden="true"></div>
+<div class="stripe"></div>
+<div class="wrap">
+  <h1 class="mark"><span class="a">Khadi</span> <i>×</i> <span class="b">Manny</span></h1>
+  <p class="tag">Tonight, on the call</p>
+  <div class="link" aria-hidden="true"><svg viewBox="0 0 300 56" preserveAspectRatio="none"><path d="M4 44 C 80 -6, 220 -6, 296 44" fill="none" stroke="#ffc857" stroke-width="3" stroke-linecap="round"/><circle cx="4" cy="44" r="7" fill="#ff7a6b"/><circle cx="296" cy="44" r="7" fill="#62c8ff"/><path d="M150 22c-9-5-9-13-3-13 2 0 3 1 3 3 0-2 1-3 3-3 6 0 6 8-3 13z" fill="#ff6b86" stroke="none" style="animation:none" transform="translate(0 6)"/></svg></div>
+  <div class="games">
+    <a class="g" href="bingo/"><small>Game one</small><h2>Date Night Bingo</h2><p>Stamp your squares, get the other to agree, race to a line.</p>
+      <div class="mini"><b class="k"></b><b></b><b class="m"></b><b></b><b class="k"></b></div><span class="go">play</span></a>
+    <a class="g" href="wavelength/"><small>Game two</small><h2>Same Wavelength</h2><p>One prompt, one word each. Can you land on the same one?</p>
+      <div class="mini"><svg viewBox="0 0 96 22"><path d="M2 11c8-14 14-14 22 0s14 14 22 0 14-14 22 0 14 14 22 0" fill="none" stroke="#ff7a6b" stroke-width="3" stroke-linecap="round"/><path d="M2 11c8-14 14-14 22 0s14 14 22 0 14-14 22 0 14 14 22 0" fill="none" stroke="#62c8ff" stroke-width="3" stroke-linecap="round" opacity=".75" transform="translate(5 0)"/></svg></div><span class="go">play</span></a>
+  </div>
+</div>
 </body>
 </html>
