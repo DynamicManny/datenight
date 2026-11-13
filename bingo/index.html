@@ -662,7 +662,10 @@ function reduce(events, baseSeed){
       h += '<p class="sub">' + esc(NAMES[owner]) + ' will claim this one when it is done.</p>';
     }
     h += '<button class="btn ghost" id="close" type="button">Close</button></div></div>';
+    var oldNote = document.getElementById('note'), keep = oldNote ? oldNote.value : null, had = oldNote && document.activeElement === oldNote;
     $('sheetmount').innerHTML = h;
+    var nn = document.getElementById('note');
+    if (nn && keep){ nn.value = keep; if (had){ nn.focus(); try { nn.setSelectionRange(keep.length, keep.length); } catch(e){} } }
   }
   function closeSheet(){ sheet = null; $('sheetmount').innerHTML = ''; }
 
