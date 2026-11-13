@@ -52,5 +52,8 @@ begin
   end;
 end $$;
 
+-- Make the new tables visible to the API right away.
+notify pgrst, 'reload schema';
+
 -- Optional tidy-up: delete rooms older than 30 days (run by hand whenever you like).
 -- delete from public.rooms where created_at < now() - interval '30 days';
