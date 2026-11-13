@@ -93,6 +93,12 @@ input.word{width:100%;border:2px solid #c9cde3;border-radius:14px;padding:14px 1
 input.word:focus{border-color:var(--c,#4b5bd6)}
 input.word::placeholder{color:#a3a9cb;font-weight:500}
 
+/* write list */
+.plist{display:flex;flex-direction:column;gap:12px;margin:4px 0 4px}
+.prow{display:grid;grid-template-columns:26px 1fr;column-gap:8px;row-gap:5px;align-items:start}
+.pn{font-family:var(--mono);font-size:.75rem;color:var(--cardmute);padding-top:2px}
+.pt{font-weight:600;font-size:1rem;line-height:1.2}
+.prow input.word{grid-column:2;margin-top:0;font-size:1.2rem;padding:10px 12px}
 /* reveal */
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0 12px;perspective:700px}
 .wcard{border-radius:16px;padding:12px 10px 14px;text-align:center;color:#13172b;background:linear-gradient(145deg,var(--c),color-mix(in srgb,var(--c) 78%,#000));animation:flip .6s cubic-bezier(.2,1.1,.4,1) both}
@@ -253,42 +259,41 @@ function norm(w){
     return (x.length > 3 && /s$/.test(x) && !/ss$/.test(x)) ? x.slice(0, -1) : x;
   }).join(' ');
 }
-function newRound(r){ return {r: r, ready: [false, false], words: [null, null]}; }
-// The whole game is rebuilt from the ordered events, so both phones always agree.
 function reduce(events, baseSeed){
-  var g = 0, hist = [], cur = newRound(0);
+  var g = 0, ready = [false, false], words = [null, null], idx = 0, counted = {};
   var list = events.slice().sort(function(a, b){ return a.seq - b.seq; });
-  function promptsFor(gen){
-    return shuffled(SETS[gen % SETS.length].prompts, baseSeed + ':set' + gen);
-  }
+  function promptsFor(gen){ return shuffled(SETS[gen % SETS.length].prompts, baseSeed + ':set' + gen); }
   var order = promptsFor(0);
+  function bothLocked(){ return words[0] !== null && words[1] !== null; }
   list.forEach(function(ev){
     var pl = ev.payload || {}, p = ev.player;
     if (ev.kind === 'newset'){
-      g++; hist = []; cur = newRound(0); order = promptsFor(g); return;
+      g++; ready = [false, false]; words = [null, null]; idx = 0; counted = {}; order = promptsFor(g); return;
     }
+    if (ev.kind === 'ready'){ if (words[p] === null) ready[p] = true; return; }
+    if (ev.kind === 'lock'){
+      if (!ready[0] || !ready[1] || words[p] !== null || !Array.isArray(pl.words) || pl.words.length !== ROUNDS) return;
+      var ws = pl.words.map(function(w){ return String(w || '').trim().slice(0, 40); });
+      if (ws.some(function(w){ return !w; })) return;
+      words[p] = ws; return;
+    }
+    if (ev.kind === 'next'){ if (bothLocked() && pl.i === idx && idx < ROUNDS) idx++; return; }
     if (ev.kind === 'close'){
-      var last = hist[hist.length - 1];
-      if (last && !last.match && !last.counted && pl.round === last.r) last.counted = true;
-      return;
-    }
-    if (hist.length >= ROUNDS) return;
-    if (ev.kind === 'ready'){
-      if (pl.round === cur.r) cur.ready[p] = true;
-    } else if (ev.kind === 'lock'){
-      var w = String(pl.word || '').trim().slice(0, 40);
-      if (pl.round === cur.r && cur.ready[0] && cur.ready[1] && cur.words[p] === null && w){
-        cur.words[p] = w;
-        if (cur.words[0] !== null && cur.words[1] !== null){
-          hist.push({r: cur.r, prompt: order[cur.r], words: cur.words.slice(), match: norm(cur.words[0]) === norm(cur.words[1]), counted: false});
-          cur = newRound(cur.r + 1);
-        }
-      }
+      if (bothLocked() && pl.round >= 0 && pl.round < ROUNDS && pl.round <= idx) counted[pl.round] = true;
     }
   });
-  var score = hist.filter(function(h){ return h.match || h.counted; }).length;
-  return {g: g, setIdx: g % SETS.length, setName: SETS[g % SETS.length].name, hist: hist, cur: cur, score: score,
-          over: hist.length >= ROUNDS, prompt: order[cur.r] || null};
+  var rounds = [], score = 0, locked = bothLocked();
+  if (locked){
+    for (var r = 0; r < ROUNDS; r++){
+      var m = norm(words[0][r]) === norm(words[1][r]);
+      var rd = {r: r, prompt: order[r], words: [words[0][r], words[1][r]], match: m, counted: !m && !!counted[r], revealed: r <= idx || idx >= ROUNDS};
+      rounds.push(rd);
+      if (rd.revealed && (rd.match || rd.counted)) score++;
+    }
+  }
+  var stage = !(ready[0] && ready[1]) ? 'ready' : (!locked ? 'write' : (idx >= ROUNDS ? 'summary' : 'reveal'));
+  return {g: g, setName: SETS[g % SETS.length].name, ready: ready, locked: [words[0] !== null, words[1] !== null],
+          prompts: order, rounds: rounds, idx: idx, score: score, stage: stage};
 }
 // LOGIC END
 
@@ -300,7 +305,7 @@ function reduce(events, baseSeed){
   var cfg = window.DATENIGHT, sb = null;
   var room = null, me = 0, events = new Map(), S = null;
   var channel = null, pollTimer = null, live = false;
-  var draft = '', showSummary = false, lastG = -1, lastHist = -1;
+  var draft = [], lastG = -1, lastShown = -1;
   var reduceMotion = false;
   try { reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
 
@@ -378,7 +383,7 @@ function reduce(events, baseSeed){
 
   /* ---------- room ---------- */
   async function enterRoom(r, slot){
-    room = r; me = slot; events = new Map(); draft = ''; showSummary = false; lastG = -1; lastHist = -1;
+    room = r; me = slot; events = new Map(); draft = []; lastG = -1; lastShown = -1;
     saveSession();
     $('lobby').classList.add('hidden'); $('game').classList.remove('hidden');
     startWaves($('waves'));
@@ -394,8 +399,9 @@ function reduce(events, baseSeed){
     if (!quiet && ev.player !== me){
       var who = NAMES[ev.player];
       if (ev.kind === 'ready'){ buzz(); toast(who + ' is ready'); }
-      else if (ev.kind === 'lock'){ buzz(); toast(who + ' locked in'); }
+      else if (ev.kind === 'lock'){ buzz(); toast(who + ' locked in all ' + ROUNDS); }
       else if (ev.kind === 'close'){ toast(who + ' counted it'); }
+      else if (ev.kind === 'next'){ buzz(15); }
       else if (ev.kind === 'newset'){ toast(who + ' started new prompts'); }
     }
     return true;
@@ -457,88 +463,80 @@ function reduce(events, baseSeed){
 
   function render(){
     if (!room) return;
-    var hadFocus = document.activeElement && document.activeElement.id === 'word';
+    var fa = document.activeElement, fi = fa && fa.classList && fa.classList.contains('word') ? fa.getAttribute('data-i') : null;
+    var fpos = fi !== null && fa.selectionStart !== undefined ? fa.selectionStart : 0;
+    var wy = window.pageYOffset;
     S = reduce(Array.from(events.values()), room.seed);
-    if (S.g !== lastG){ if (lastG !== -1){ showSummary = false; draft = ''; } lastG = S.g; lastHist = S.hist.length; }
+    if (S.g !== lastG){ if (lastG !== -1) draft = []; lastG = S.g; lastShown = -1; }
     setConn();
+    var other = 1 - me, html = '';
+    var shown = S.stage === 'reveal' ? S.idx + 1 : (S.stage === 'summary' ? ROUNDS : 0);
 
-    // waves converge with matches
     wave.target = Math.PI * (1 - S.score / ROUNDS);
     if (reduceMotion && wave.canvas) drawWaves(wave.canvas, wave.target, 0, S.score >= ROUNDS ? 1 : 0);
     $('matches').textContent = S.score;
-    $('setname').textContent = S.setName + ' · ' + Math.min(S.hist.length + (S.over ? 0 : 1), ROUNDS) + ' of ' + ROUNDS;
+    $('setname').textContent = S.setName + (S.stage === 'reveal' ? ' \u00b7 ' + (S.idx + 1) + ' of ' + ROUNDS : (S.stage === 'summary' ? ' \u00b7 done' : ' \u00b7 ' + ROUNDS + ' prompts'));
     var dots = '';
     for (var i = 0; i < ROUNDS; i++){
-      var h = S.hist[i];
-      dots += '<i class="' + (h ? ((h.match || h.counted) ? 'hit' : 'miss') : (i === S.hist.length ? 'now' : '')) + '"></i>';
+      var h = S.rounds[i], cls = '';
+      if (h && h.revealed) cls = (h.match || h.counted) ? 'hit' : 'miss';
+      else if (S.stage === 'reveal' && i === S.idx) cls = 'now';
+      dots += '<i class="' + cls + '"></i>';
     }
     $('dots').innerHTML = dots;
 
-    // new reveal: celebrate a match
-    if (S.hist.length > lastHist && lastHist !== -1){
-      var lh = S.hist[S.hist.length - 1];
-      if (lh && lh.match) celebrate();
-      else buzz(25);
+    if (lastShown !== -1 && shown > lastShown && S.stage === 'reveal'){
+      var cur = S.rounds[S.idx];
+      if (cur && cur.match) celebrate(); else buzz(25);
     }
-    lastHist = S.hist.length;
+    lastShown = shown;
 
-    var both = S.cur.ready[0] && S.cur.ready[1];
-    var stage = S.over ? (showSummary ? 'summary' : 'reveal') : (both ? 'write' : (S.hist.length ? 'reveal' : 'ready'));
-    var other = 1 - me, html = '';
-    var round = S.over ? ROUNDS : S.hist.length + 1;
-
-    if (stage === 'ready'){
-      html += '<div class="eyebrow"><span>Round ' + round + ' of ' + ROUNDS + '</span><span>' + esc(S.setName) + '</span></div>';
+    if (S.stage === 'ready'){
+      html += '<div class="eyebrow"><span>' + ROUNDS + ' prompts</span><span>' + esc(S.setName) + '</span></div>';
       html += '<div class="big">Ready when you are.</div>';
-      html += '<p class="hint">You will both see the prompt at the same time, then each write a word or two. Try to match.</p>';
-      html += '<div class="chips">' + chip(0, S.cur.ready[0], S.cur.ready[0] ? 'ready' : 'not yet') + chip(1, S.cur.ready[1], S.cur.ready[1] ? 'ready' : 'not yet') + '</div>';
-      html += S.cur.ready[me]
+      html += '<p class="hint">You will each answer all ' + ROUNDS + ' prompts with a word or two, then flip through the answers together.</p>';
+      html += '<div class="chips">' + chip(0, S.ready[0], S.ready[0] ? 'ready' : 'not yet') + chip(1, S.ready[1], S.ready[1] ? 'ready' : 'not yet') + '</div>';
+      html += S.ready[me]
         ? '<button class="btn" disabled>Ready. Waiting for ' + esc(NAMES[other]) + '</button>'
-        : '<button class="btn lamp" id="ready" type="button">I’m ready</button>';
-    } else if (stage === 'write'){
-      var mine = S.cur.words[me] !== null;
-      html += '<div class="eyebrow"><span>Round ' + round + ' of ' + ROUNDS + '</span><span>' + esc(S.setName) + '</span></div>';
-      html += '<div class="prompt">' + esc(S.prompt) + '</div>';
-      html += '<p class="hint">Write a word or two. Try to match ' + esc(NAMES[other]) + '.</p>';
-      if (!mine){
-        html += '<input class="word ' + (me === 0 ? 'a' : 'b') + '" id="word" type="text" maxlength="40" placeholder="Your word" value="' + esc(draft) + '" autocomplete="off" autocapitalize="sentences" enterkeyhint="done">';
-        html += '<button class="btn lamp" id="lock" type="button">Lock in</button>';
-      } else {
-        html += '<div class="chips"><div class="chip on"><span class="dot ' + (me === 0 ? 'a' : 'b') + '">' + NAMES[me].charAt(0) + '</span><span>Locked in <small>waiting</small></span></div></div>';
-      }
-      html += '<div class="chips">' + chip(other, S.cur.words[other] !== null, S.cur.words[other] !== null ? 'locked in' : 'writing') + '</div>';
-    } else if (stage === 'reveal' || stage === 'summary'){
-      if (stage === 'reveal'){
-        var hh = S.hist[S.hist.length - 1], hit = hh.match || hh.counted;
-        html += '<div class="eyebrow"><span>Round ' + (hh.r + 1) + ' of ' + ROUNDS + '</span><span>' + (hit ? '+1' : 'no point') + '</span></div>';
-        html += '<div class="prompt sm">' + esc(hh.prompt) + '</div>';
-        html += '<div class="pair"><div class="wcard a"><small>' + NAMES[0] + '</small><b>' + esc(hh.words[0]) + '</b></div><div class="wcard b"><small>' + NAMES[1] + '</small><b>' + esc(hh.words[1]) + '</b></div></div>';
-        if (hh.match) html += '<div class="verdict ok">Same wavelength!</div>';
-        else if (hh.counted) html += '<div class="verdict ok">Close enough. Counted.</div>';
-        else html += '<div class="verdict no">Not this time.</div><p class="note">Same idea in different words? Count it anyway.</p><button class="btn ghost" id="count" type="button">Count it anyway</button>';
-        if (S.over){
-          html += '<button class="btn lamp" id="summary" type="button">See how we did</button>';
-        } else {
-          html += '<div class="chips">' + chip(0, S.cur.ready[0], S.cur.ready[0] ? 'ready' : 'not yet') + chip(1, S.cur.ready[1], S.cur.ready[1] ? 'ready' : 'not yet') + '</div>';
-          html += S.cur.ready[me]
-            ? '<button class="btn" disabled>Ready. Waiting for ' + esc(NAMES[other]) + '</button>'
-            : '<button class="btn lamp" id="ready" type="button">I’m ready for the next one</button>';
+        : '<button class="btn lamp" id="ready" type="button">I\u2019m ready</button>';
+    } else if (S.stage === 'write'){
+      html += '<div class="eyebrow"><span>Your answers</span><span>' + esc(S.setName) + '</span></div>';
+      if (!S.locked[me]){
+        html += '<p class="hint">A word or two each. Try to land on the same one as ' + esc(NAMES[other]) + '.</p><div class="plist">';
+        for (var k = 0; k < ROUNDS; k++){
+          html += '<label class="prow"><span class="pn">' + (k + 1) + '</span><span class="pt">' + esc(S.prompts[k]) + '</span>' +
+            '<input class="word ' + (me === 0 ? 'a' : 'b') + '" data-i="' + k + '" type="text" maxlength="40" placeholder="Your word" value="' + esc(draft[k] || '') + '" autocomplete="off" autocapitalize="sentences" enterkeyhint="' + (k === ROUNDS - 1 ? 'done' : 'next') + '"></label>';
         }
+        var filled = 0; for (var q = 0; q < ROUNDS; q++) if ((draft[q] || '').trim()) filled++;
+        html += '</div><button class="btn lamp" id="lock" type="button"' + (filled < ROUNDS ? ' disabled' : '') + '>' + (filled < ROUNDS ? filled + ' of ' + ROUNDS + ' filled' : 'Lock in all ' + ROUNDS) + '</button>';
       } else {
-        html += '<div class="eyebrow"><span>' + esc(S.setName) + '</span><span>Final</span></div>';
-        html += '<div class="score">' + S.score + '<span> / ' + ROUNDS + '</span></div>';
-        html += '<div class="big" style="font-size:1.35rem;margin-top:2px">' + esc(tier(S.score)) + '</div>';
-        html += '<div class="recap">';
-        S.hist.forEach(function(h){
-          var ok = h.match || h.counted;
-          html += '<div class="rc' + (ok ? ' hit' : '') + '"><div class="p">' + esc(h.prompt) + '</div><div class="w"><span class="a">' + esc(h.words[0]) + '</span><span class="b">' + esc(h.words[1]) + '</span><em>' + (ok ? 'match' : 'miss') + '</em></div></div>';
-        });
-        html += '</div>';
-        html += '<button class="btn lamp" id="newset" type="button">New prompts</button>';
+        html += '<div class="big">Locked in.</div><p class="hint">Waiting for ' + esc(NAMES[other]) + ' to finish.</p>';
       }
+      html += '<div class="chips">' + chip(0, S.locked[0], S.locked[0] ? 'locked in' : 'writing') + chip(1, S.locked[1], S.locked[1] ? 'locked in' : 'writing') + '</div>';
+    } else if (S.stage === 'reveal'){
+      var hh = S.rounds[S.idx], hit = hh.match || hh.counted;
+      html += '<div class="eyebrow"><span>' + (hh.r + 1) + ' of ' + ROUNDS + '</span><span>' + (hit ? '+1' : 'no point') + '</span></div>';
+      html += '<div class="prompt sm">' + esc(hh.prompt) + '</div>';
+      html += '<div class="pair"><div class="wcard a"><small>' + NAMES[0] + '</small><b>' + esc(hh.words[0]) + '</b></div><div class="wcard b"><small>' + NAMES[1] + '</small><b>' + esc(hh.words[1]) + '</b></div></div>';
+      if (hh.match) html += '<div class="verdict ok">Same wavelength!</div>';
+      else if (hh.counted) html += '<div class="verdict ok">Close enough. Counted.</div>';
+      else html += '<div class="verdict no">Not this time.</div><p class="note">Same idea in different words? Count it anyway.</p><button class="btn ghost" id="count" type="button">Count it anyway</button>';
+      html += '<button class="btn lamp" id="next" type="button">' + (S.idx === ROUNDS - 1 ? 'See how we did' : 'Next one') + '</button>';
+    } else {
+      html += '<div class="eyebrow"><span>' + esc(S.setName) + '</span><span>Final</span></div>';
+      html += '<div class="score">' + S.score + '<span> / ' + ROUNDS + '</span></div>';
+      html += '<div class="big" style="font-size:1.35rem;margin-top:2px">' + esc(tier(S.score)) + '</div><div class="recap">';
+      S.rounds.forEach(function(h){
+        var ok = h.match || h.counted;
+        html += '<div class="rc' + (ok ? ' hit' : '') + '"><div class="p">' + esc(h.prompt) + '</div><div class="w"><span class="a">' + esc(h.words[0]) + '</span><span class="b">' + esc(h.words[1]) + '</span><em>' + (ok ? 'match' : 'miss') + '</em></div></div>';
+      });
+      html += '</div><button class="btn lamp" id="newset" type="button">New prompts</button>';
     }
     $('panel').innerHTML = html;
-    if (hadFocus && $('word')){ var el = $('word'); el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch(e){} }
+    if (fi !== null){
+      var el = document.querySelector('.word[data-i="' + fi + '"]');
+      if (el){ el.focus(); try { el.setSelectionRange(fpos, fpos); } catch(e){} window.scrollTo(0, wy); }
+    }
   }
 
   function celebrate(){
@@ -562,23 +560,34 @@ function reduce(events, baseSeed){
 
   /* ---------- events ---------- */
   function lockIn(){
-    var w = (draft || '').trim();
-    if (!w){ toast('Write a word first'); return; }
-    draft = '';
-    send('lock', {round: S.cur.r, word: w});
+    var ws = [];
+    for (var i = 0; i < ROUNDS; i++){ var w = (draft[i] || '').trim(); if (!w){ toast('Fill in all ' + ROUNDS + ' first'); return; } ws.push(w); }
+    draft = [];
+    send('lock', {words: ws});
   }
   document.addEventListener('click', function(e){
     var t = e.target.closest('button'); if (!t) return;
     if (t.dataset.slot !== undefined){ pick(+t.dataset.slot); return; }
-    if (t.id === 'ready'){ send('ready', {round: S.cur.r}); return; }
+    if (t.id === 'ready'){ send('ready', {}); return; }
     if (t.id === 'lock'){ lockIn(); return; }
-    if (t.id === 'count'){ var hh = S.hist[S.hist.length - 1]; send('close', {round: hh.r}); return; }
-    if (t.id === 'summary'){ showSummary = true; render(); return; }
+    if (t.id === 'count'){ send('close', {round: S.idx}); return; }
+    if (t.id === 'next'){ send('next', {i: S.idx}); return; }
     if (t.id === 'newset'){ send('newset', {}); return; }
     if (t.id === 'leave'){ leave(); return; }
   });
-  document.addEventListener('input', function(e){ if (e.target && e.target.id === 'word') draft = e.target.value; });
-  document.addEventListener('keydown', function(e){ if (e.key === 'Enter' && e.target && e.target.id === 'word'){ e.preventDefault(); lockIn(); } });
+  document.addEventListener('input', function(e){
+    var el = e.target;
+    if (!el || !el.classList || !el.classList.contains('word')) return;
+    draft[+el.getAttribute('data-i')] = el.value;
+    var n = 0; for (var i = 0; i < ROUNDS; i++) if ((draft[i] || '').trim()) n++;
+    var b = $('lock'); if (b){ b.disabled = n < ROUNDS; b.textContent = n < ROUNDS ? n + ' of ' + ROUNDS + ' filled' : 'Lock in all ' + ROUNDS; }
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Enter' || !e.target || !e.target.classList || !e.target.classList.contains('word')) return;
+    e.preventDefault();
+    var nx = document.querySelector('.word[data-i="' + (+e.target.getAttribute('data-i') + 1) + '"]');
+    if (nx) nx.focus(); else e.target.blur();
+  });
 
   function leave(){
     clearSession(); clearInterval(pollTimer); cancelAnimationFrame(wave.raf);
