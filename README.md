@@ -6,7 +6,7 @@ Small games for two people who live far apart. Static pages on GitHub Pages, wit
 
 1. In Supabase, open SQL Editor, paste `sql/setup.sql`, and run it.
 2. In this repo, open Settings, Pages, and set the source to the `main` branch, root folder.
-3. Open `https://<your-github-username>.github.io/datenight/` on both phones and enter your names.
+3. Open `https://<your-github-username>.github.io/datenight/` on both phones and tap who you are.
 
 `config.js` holds the project URL and the publishable key. That key is meant to be public. Never commit a secret or `service_role` key.
 
