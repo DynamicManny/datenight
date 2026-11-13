@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Date Night Bingo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=DM+Mono:wght@400;500&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: two airmail-stamped bingo cards, one per person. Your card is yours to claim, theirs is yours to approve. */
+:root{
+  --ink:#0e1326;
+  --ink2:#161d3a;
+  --line:#2b3668;
+  --text:#e9ecfa;
+  --mute:#9aa4cf;
+  --lamp:#ffc857;
+  --a:#ff7a6b;
+  --b:#62c8ff;
+  --card:#f1f3fb;
+  --cardtext:#161a33;
+  --cardmute:#5b6390;
+  --good:#3fbf8a;
+  --bad:#e5645f;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --body:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"DM Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--ink);background-image:radial-gradient(900px 500px at 50% -10%,#1d2750 0%,transparent 70%);color:var(--text);font-family:var(--body);font-size:16px;line-height:1.45;min-height:100%;-webkit-text-size-adjust:100%}
+.stripe{height:10px;background:repeating-linear-gradient(135deg,#d9433b 0 14px,#f4f4f4 14px 28px,#2f5fd0 28px 42px,#f4f4f4 42px 56px)}
+.wrap{max-width:480px;margin:0 auto;padding:18px 16px 60px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-0.01em}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--lamp);outline-offset:2px}
+.hidden{display:none !important}
+
+.title{font-size:clamp(2.5rem,12vw,3.6rem);font-weight:800;line-height:.95;margin:14px 0 10px}
+.title span{color:var(--lamp)}
+.lede{color:var(--mute);font-size:1.05rem;max-width:34ch;margin:0 0 22px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field label{font-family:var(--mono);font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--mute)}
+.field input,.field textarea{background:var(--ink2);border:1.5px solid var(--line);border-radius:12px;color:var(--text);padding:13px 14px;font:inherit;font-size:1.05rem;width:100%}
+.field input::placeholder,.field textarea::placeholder{color:#5e689b}
+.field input.code{font-family:var(--mono);letter-spacing:.2em;text-transform:uppercase}
+.btn{width:100%;background:var(--lamp);color:#1b1730;border:0;border-radius:14px;padding:15px 16px;font-family:var(--display);font-weight:700;font-size:1.1rem;transition:transform .08s ease,filter .15s ease}
+.btn:active{transform:translateY(1px) scale(.99)}
+.btn[disabled]{filter:grayscale(1) brightness(.6);cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--text);border:1.5px solid var(--line)}
+.btn.sm{padding:11px 12px;font-size:.98rem;border-radius:12px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.err{color:#ff9a94;font-size:.9rem;min-height:1.3em;margin:8px 0 0}
+.rules{list-style:none;padding:0;margin:20px 0 22px;display:flex;flex-direction:column;gap:10px;counter-reset:r}
+.rules li{counter-increment:r;display:grid;grid-template-columns:28px 1fr;gap:10px;color:var(--mute);font-size:.95rem}
+.rules li::before{content:counter(r);font-family:var(--mono);color:var(--lamp);border:1.5px solid var(--line);border-radius:50%;width:26px;height:26px;display:grid;place-items:center;font-size:.8rem}
+
+/* top bar */
+.head{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin-bottom:12px}
+.pl{display:flex;align-items:center;gap:8px;min-width:0;padding:6px 10px 6px 6px;border-radius:999px;border:1.5px solid transparent}
+.pl.r{flex-direction:row-reverse;padding:6px 6px 6px 10px}
+.dot{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:800;color:#13172b;font-size:.95rem}
+.dot.a{background:var(--a)} .dot.b{background:var(--b)} .dot.w{background:var(--line);color:var(--mute)}
+.pl .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.95rem}
+.pl.me{border-color:var(--lamp);background:#1b2347}
+.conn{font-family:var(--mono);font-size:.68rem;color:var(--mute);text-align:center;line-height:1.2}
+.conn i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--bad);margin-right:5px}
+.conn.live i{background:var(--good)}
+.conn.slow i{background:var(--lamp)}
+
+/* invite */
+.invite{background:var(--ink2);border:1.5px dashed var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+.invite .big{font-family:var(--mono);font-size:2rem;letter-spacing:.3em;color:var(--lamp);margin:4px 0 8px}
+.invite p{margin:0 0 10px;color:var(--mute);font-size:.92rem}
+
+/* banners */
+.banner{border-radius:14px;padding:12px 14px;margin-bottom:12px;background:#2a2450;border:1.5px solid #4a3f8f;font-size:.95rem}
+.banner b{font-family:var(--display)}
+.ask{background:#fff3d1;color:#2b2410;border-radius:14px;padding:12px 14px;margin-bottom:12px}
+.ask .k{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#6a5412;display:block;margin-bottom:3px}
+.ask .t{font-weight:600}
+.ask .n{font-size:.92rem;color:#5a4a1c;margin:2px 0 8px;font-style:italic}
+
+/* tabs */
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.tabs button{background:var(--ink2);border:1.5px solid var(--line);border-radius:12px;padding:9px 10px;text-align:left;display:flex;flex-direction:column;gap:1px}
+.tabs button b{font-family:var(--display);font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tabs button small{font-family:var(--mono);font-size:.68rem;color:var(--mute)}
+.tabs button[aria-pressed=true]{border-color:var(--lamp);background:#222a4f}
+
+/* grid */
+.letters{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:5px;font-family:var(--display);font-weight:800;color:var(--lamp);text-align:center;letter-spacing:.1em}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.cell{position:relative;aspect-ratio:1;background:var(--ink2);border:1.5px solid var(--line);border-radius:10px;padding:4px 3px;display:grid;place-items:center;text-align:center;font-size:.66rem;line-height:1.12;font-weight:600;color:var(--text);overflow:hidden;overflow-wrap:anywhere;hyphens:manual;text-wrap:balance}
+.cell .tg{position:absolute;left:4px;top:2px;font-family:var(--mono);font-size:.5rem;color:var(--mute);font-weight:400}
+.cell.free{background:#2a2a1e;border-color:#6b5a1f;color:var(--lamp);font-family:var(--mono);font-size:.62rem;letter-spacing:.06em}
+.cell.st0{background:var(--a);border-color:var(--a);color:#2a1210}
+.cell.st1{background:var(--b);border-color:var(--b);color:#0b2233}
+.cell.st0 .tg,.cell.st1 .tg{color:rgba(0,0,0,.45)}
+.cell .ck{position:absolute;right:2px;bottom:2px;width:15px;height:15px;color:rgba(0,0,0,.55)}
+.cell.pend{border:2px dashed var(--lamp);animation:pend 1.4s ease-in-out infinite}
+.cell.line{box-shadow:0 0 0 2px var(--lamp)}
+@keyframes pend{50%{background:#2b2a4a}}
+
+/* sheet */
+.sheet-bg{position:fixed;inset:0;background:rgba(5,8,20,.65);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--card);color:var(--cardtext);width:100%;max-width:480px;border-radius:22px 22px 0 0;padding:18px 18px 26px;animation:up .22s ease}
+@keyframes up{from{transform:translateY(30px);opacity:.4}}
+.sheet .eyebrow{font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--cardmute);display:flex;justify-content:space-between;gap:8px}
+.sheet h3{font-size:1.5rem;font-weight:700;line-height:1.15;margin:8px 0 6px}
+.sheet .sub{color:var(--cardmute);font-size:.95rem;margin:0 0 12px}
+.sheet textarea{width:100%;border:2px solid #c9cde3;border-radius:12px;padding:11px 12px;font:inherit;font-size:1rem;color:var(--cardtext);background:#fff;min-height:74px;resize:vertical}
+.sheet .btn{background:#1b1f45;color:#fff;margin-top:10px}
+.sheet .btn.ghost{background:transparent;color:var(--cardtext);border-color:#c9cde3}
+.sheet .note{margin:8px 0;padding:10px 12px;border-radius:12px;background:#e8ebff;font-size:.95rem}
+
+.foot{margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-family:var(--mono);font-size:.72rem;color:var(--mute)}
+.foot button{background:none;border:0;color:var(--mute);text-decoration:underline;padding:6px 2px;font-family:var(--mono);font-size:.72rem}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#fff;color:#161a33;border-radius:999px;padding:10px 16px;font-weight:600;font-size:.92rem;z-index:40;box-shadow:0 8px 30px rgba(0,0,0,.4);max-width:90vw;text-align:center}
+
+.finale{position:fixed;inset:0;z-index:30;background:rgba(5,8,20,.8);display:grid;place-items:center;padding:20px}
+.finale .box{background:var(--card);color:var(--cardtext);border-radius:22px;padding:22px 20px;max-width:420px;width:100%}
+.finale h2{font-size:2.2rem;font-weight:800;line-height:1;margin:4px 0 10px}
+.finale p{margin:0 0 8px;color:var(--cardmute)}
+.finale .btn{background:#1b1f45;color:#fff;margin-top:10px}
+.finale .btn.ghost{background:transparent;color:var(--cardtext);border-color:#c9cde3}
+.confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:35}
+.confetti i{position:absolute;top:-12px;width:8px;height:14px;border-radius:2px;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(540deg);opacity:.9}}
+@media (prefers-reduced-motion:reduce){.cell.pend{animation:none}.sheet{animation:none}.confetti{display:none}}
+</style>
+</head>
+<body>
+<div class="stripe"></div>
+<div class="wrap">
+
+  <!-- LOBBY -->
+  <section id="lobby">
+    <h1 class="title">Date Night<br><span>Bingo</span></h1>
+    <p class="lede">Two different cards. Fill a line on yours. Your person has to agree it really happened.</p>
+
+    <div class="field">
+      <label for="name">Your name</label>
+      <input type="text" id="name" placeholder="Your first name" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="code">Room code (only if joining)</label>
+      <input type="text" id="code" class="code" placeholder="ABCDE" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false">
+    </div>
+    <div class="row2">
+      <button class="btn" id="create" type="button">Start a game</button>
+      <button class="btn ghost" id="join" type="button">Join a game</button>
+    </div>
+    <p class="err" id="err" role="alert"></p>
+
+    <ol class="rules">
+      <li>One of you starts a game and sends the invite link. The other opens it and joins.</li>
+      <li>Each card has 24 squares: things to do on a call or any time during the week.</li>
+      <li>Did a square? Tap it and ask your person to approve. They tap Approve to stamp it.</li>
+      <li>First bingo picks the next date activity. Both of you with bingo is a double bingo.</li>
+    </ol>
+  </section>
+
+  <!-- GAME -->
+  <section id="game" class="hidden">
+    <div class="head">
+      <div class="pl" id="pl0"><span class="dot a" id="d0"></span><span class="nm" id="n0"></span></div>
+      <div class="conn" id="conn"><i></i><span id="connt">Connecting</span></div>
+      <div class="pl r" id="pl1"><span class="dot b" id="d1"></span><span class="nm" id="n1"></span></div>
+    </div>
+
+    <div id="invite" class="invite hidden">
+      <p>Waiting for your person. Send them this link, or give them the code.</p>
+      <div class="big" id="invcode"></div>
+      <button class="btn sm" id="copy" type="button">Copy invite link</button>
+    </div>
+
+    <div id="banner"></div>
+    <div id="asks"></div>
+
+    <div class="tabs" id="tabs"></div>
+    <div class="letters"><span>B</span><span>I</span><span>N</span><span>G</span><span>O</span></div>
+    <div class="grid" id="grid"></div>
+
+    <div class="foot">
+      <span id="roomtag"></span>
+      <span><button type="button" id="leave">Leave game</button></span>
+    </div>
+  </section>
+
+</div>
+
+<div id="sheetmount"></div>
+<div id="finalemount"></div>
+<div class="confetti" id="confetti"></div>
+
+<script src="../config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+// LOGIC START
+var POOL = [
+  ['Goodnight note','Send a voice note just to say goodnight','W'],
+  ['Same meal','Cook the same meal on video and eat together','C'],
+  ['Song swap','Share a song and explain why it made you think of them','W'],
+  ['Sky photo','Send a photo of the sky where you are right now','W'],
+  ['Dance break','Dance together on camera for one full song','C'],
+  ['Read a letter','Write them a short letter and read it out loud','W'],
+  ['New inside joke','Invent a brand new inside joke together','C'],
+  ['First memory','Tell them your earliest memory','C'],
+  ['Silly filters','Spend five minutes on the silliest filters you can find','C'],
+  ['Movie night','Watch the same movie at the same time','C'],
+  ['Home tour','Give them a full video tour of where you are','C'],
+  ['Meet a pet','Introduce them to a pet, a plant, or anything alive near you','C'],
+  ['Quick portrait','Draw a portrait of them in under a minute','C'],
+  ['Big compliment','Give them a compliment they will remember','W'],
+  ['Early good morning','Send a good morning message before they wake up','W'],
+  ['Shared playlist','Add five songs to a playlist you both share','W'],
+  ['Dream trip','Plan a dream trip together, even a pretend one','C'],
+  ['New word','Learn a word in a new language together','C'],
+  ['Kid photo','Show them a photo of you as a kid and tell the story','C'],
+  ['Scary story','Tell a scary story with the lights low','C'],
+  ['Quiz me','Make a five question quiz about yourself and quiz them','C'],
+  ['Surprise snack','Order them a snack or a drink as a surprise','W'],
+  ['New nicknames','Come up with a brand new nickname for each other','C'],
+  ['Stretch together','Do a short workout or stretch together on video','C'],
+  ['Floor picnic','Have a picnic on video, even if it is on the floor','C'],
+  ['Thank you','Tell them one thing you are thankful for about them','W'],
+  ['Movie scene','Act out a movie scene together','C'],
+  ['Read aloud','Read a page of a book out loud to them','C'],
+  ['Wallpaper story','Show your phone wallpaper and explain it','C'],
+  ['Favorite spot','Show them your favorite place nearby','W'],
+  ['Coffee date','Have a coffee or tea date on video','C'],
+  ['Bad singing','Sing a line of their favorite song, badly','C'],
+  ['Rate the day','Rate your day out of ten and defend the number','W'],
+  ['Hidden talent','Show them a talent they have never seen','C'],
+  ['Three wishes','Share three things you want to do together','C'],
+  ['Where am I?','Send clues and make them guess where you are','W'],
+  ['Impression','Do an impression of them, to their face','C'],
+  ['Same sky','Look at the same sky together for five minutes','C'],
+  ['Walk and talk','Take a walk on a call and describe what you see','C'],
+  ['Past bedtime','Stay up talking past your usual bedtime','C'],
+  ['Little surprise','Plan or send a small surprise to their door','W'],
+  ['A fear','Share a fear you have not told many people','C'],
+  ['Three wins','Name three small things that went right today','W'],
+  ['Mirror game','Copy each other’s moves like a mirror for one minute','C'],
+  ['Photo dump','Send five photos from your week with captions','W'],
+  ['Recipe swap','Swap a recipe and try each other’s','W'],
+  ['Future note','Write a note to open on the day you meet','W'],
+  ['Their dare','Do a dare they pick, on camera','C'],
+  ['Worst joke','Tell your worst joke with a perfectly straight face','C'],
+  ['Favorite word','Teach them a favorite word or phrase','C'],
+  ['Slow dance','Slow dance together on video','C'],
+  ['Handwriting','Write a sentence by hand and show it to the camera','C'],
+  ['Sleep on call','Fall asleep on a call together','C'],
+  ['First day plan','Plan the first day you will spend together in person','C'],
+  ['Outfit story','Tell them what you wore today and why','W'],
+  ['Countdown','Make a countdown to the next time you meet','W'],
+  ['Fun fact','Teach them a fun fact they did not know','W'],
+  ['Weather report','Describe your weather and what you wish you were doing in it','W'],
+  ['Tiny apology','Apologize for something small and silly from this month','W'],
+  ['Say it','Say something you have been holding back','C']
+];
+
+function xmur3(str){
+  var h = 1779033703 ^ str.length;
+  for (var i = 0; i < str.length; i++){
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return function(){
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return (h ^= h >>> 16) >>> 0;
+  };
+}
+function mulberry32(a){
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    var t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function shuffled(arr, seedStr){
+  var rnd = mulberry32(xmur3(seedStr)());
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--){
+    var j = Math.floor(rnd() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+// Two disjoint cards of 24 squares each, laid out 5x5 with a free square in the middle (cell 12). Cell value is a POOL index, or -1 for free.
+function buildCards(seed){
+  var order = shuffled(POOL.map(function(_, i){ return i; }), seed + ':pool');
+  var cards = [];
+  for (var p = 0; p < 2; p++){
+    var picks = shuffled(order.slice(p * 24, p * 24 + 24), seed + ':layout' + p);
+    var cells = [], k = 0;
+    for (var c = 0; c < 25; c++) cells.push(c === 12 ? -1 : picks[k++]);
+    cards.push(cells);
+  }
+  return cards;
+}
+var LINES = (function(){
+  var L = [], i, j;
+  for (i = 0; i < 5; i++){
+    var r = [], c = [];
+    for (j = 0; j < 5; j++){ r.push(i * 5 + j); c.push(j * 5 + i); }
+    L.push(r, c);
+  }
+  L.push([0, 6, 12, 18, 24], [4, 8, 12, 16, 20]);
+  return L;
+})();
+function doneLines(stampedSet){
+  return LINES.filter(function(line){
+    return line.every(function(c){ return c === 12 || stampedSet.has(c); });
+  });
+}
+// Everything about the game is derived from the ordered event list, so both phones always agree.
+function reduce(events){
+  var stamped = [new Set(), new Set()], notes = [{}, {}], pending = {}, bingoSeq = [null, null];
+  var list = events.slice().sort(function(a, b){ return a.seq - b.seq; });
+  list.forEach(function(ev){
+    var pl = ev.payload || {};
+    if (ev.kind === 'claim'){
+      var p = ev.player, sq = pl.sq;
+      if (typeof sq !== 'number' || sq < 0 || sq > 24 || sq === 12) return;
+      if (stamped[p].has(sq)) return;
+      for (var k in pending) if (pending[k].p === p && pending[k].sq === sq) return;
+      pending[ev.seq] = {seq: ev.seq, p: p, sq: sq, note: String(pl.note || '').slice(0, 200)};
+    } else if (ev.kind === 'resolve'){
+      var c = pending[pl.claim];
+      if (!c || ev.player !== 1 - c.p) return;
+      delete pending[pl.claim];
+      if (pl.ok){
+        stamped[c.p].add(c.sq); notes[c.p][c.sq] = c.note;
+        if (bingoSeq[c.p] === null && doneLines(stamped[c.p]).length) bingoSeq[c.p] = ev.seq;
+      }
+    } else if (ev.kind === 'withdraw'){
+      var w = pending[pl.claim];
+      if (!w || ev.player !== w.p) return;
+      delete pending[pl.claim];
+    }
+  });
+  var phase = 'play', first = null;
+  if (bingoSeq[0] !== null || bingoSeq[1] !== null){
+    phase = (bingoSeq[0] !== null && bingoSeq[1] !== null) ? 'double' : 'first';
+    first = bingoSeq[0] === null ? 1 : (bingoSeq[1] === null ? 0 : (bingoSeq[0] < bingoSeq[1] ? 0 : 1));
+  }
+  return {stamped: stamped, notes: notes, pending: pending, bingoSeq: bingoSeq, phase: phase, first: first};
+}
+// LOGIC END
+
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var KEY = 'datenight-bingo-v1';
+  var cfg = window.DATENIGHT, sb = null;
+  var room = null, me = 0, events = new Map(), cards = null, S = null;
+  var view = 0, channel = null, pollTimer = null, live = false, celebrated = false, sheet = null;
+
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function saveSession(){ try { localStorage.setItem(KEY, JSON.stringify({code: room.code, slot: me})); } catch(e){} }
+  function loadSession(){ try { var r = localStorage.getItem(KEY); return r ? JSON.parse(r) : null; } catch(e){ return null; } }
+  function clearSession(){ try { localStorage.removeItem(KEY); } catch(e){} }
+  function buzz(){ try { if (navigator.vibrate) navigator.vibrate(30); } catch(e){} }
+  var toastT = null;
+  function toast(msg){
+    var t = document.querySelector('.toast'); if (t) t.remove();
+    t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t);
+    clearTimeout(toastT); toastT = setTimeout(function(){ t.remove(); }, 2800);
+  }
+  function names(){ return [room.p0_name || 'Waiting', room.p1_name || 'Waiting']; }
+
+  /* ---------- lobby ---------- */
+  function lobbyErr(m){ $('err').textContent = m || ''; }
+  function makeCode(){
+    var chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', s = '';
+    for (var i = 0; i < 5; i++) s += chars.charAt(Math.floor(Math.random() * chars.length));
+    return s;
+  }
+  function makeSeed(){ return Math.random().toString(36).slice(2, 10); }
+
+  async function createRoom(){
+    var name = $('name').value.trim();
+    if (!name){ lobbyErr('Enter your name first.'); return; }
+    lobbyErr(''); $('create').disabled = true;
+    try {
+      for (var t = 0; t < 5; t++){
+        var code = makeCode(), seed = makeSeed();
+        var res = await sb.from('rooms').insert({code: code, game: 'bingo', seed: seed, p0_name: name});
+        if (!res.error){ await enterRoom({code: code, seed: seed, p0_name: name, p1_name: null}, 0); return; }
+        if (res.error.code !== '23505'){ lobbyErr('Could not start a game: ' + res.error.message); return; }
+      }
+      lobbyErr('Could not find a free room code. Try again.');
+    } catch(e){ lobbyErr('Could not reach the server. Check your connection.'); }
+    finally { $('create').disabled = false; }
+  }
+
+  async function joinRoom(){
+    var name = $('name').value.trim(), code = $('code').value.trim().toUpperCase();
+    if (!name){ lobbyErr('Enter your name first.'); return; }
+    if (!code){ lobbyErr('Enter the room code you were sent.'); return; }
+    lobbyErr(''); $('join').disabled = true;
+    try {
+      var res = await sb.from('rooms').select('*').eq('code', code).eq('game', 'bingo').maybeSingle();
+      if (res.error){ lobbyErr('Could not look up that room: ' + res.error.message); return; }
+      var r = res.data;
+      if (!r){ lobbyErr('No game with that code. Check it and try again.'); return; }
+      var lower = name.toLowerCase();
+      if ((r.p0_name || '').toLowerCase() === lower){ await enterRoom(r, 0); return; }
+      if ((r.p1_name || '').toLowerCase() === lower){ await enterRoom(r, 1); return; }
+      if (r.p1_name){ lobbyErr('That game already has two players, and neither is named ' + name + '.'); return; }
+      var up = await sb.from('rooms').update({p1_name: name}).eq('code', code).is('p1_name', null).select();
+      if (up.error){ lobbyErr('Could not join: ' + up.error.message); return; }
+      if (!up.data || !up.data.length){ lobbyErr('Someone else just joined that game.'); return; }
+      await enterRoom(up.data[0], 1);
+    } catch(e){ lobbyErr('Could not reach the server. Check your connection.'); }
+    finally { $('join').disabled = false; }
+  }
+
+  /* ---------- room ---------- */
+  async function enterRoom(r, slot){
+    room = r; me = slot; events = new Map(); view = slot; celebrated = false;
+    cards = buildCards(room.seed);
+    saveSession();
+    $('lobby').classList.add('hidden'); $('game').classList.remove('hidden');
+    try { history.replaceState(null, '', location.pathname + '#' + room.code); } catch(e){}
+    await fetchAll();
+    subscribe();
+    startPoll();
+    render();
+  }
+
+  function maxSeq(){ var m = -1; events.forEach(function(_, k){ if (k > m) m = k; }); return m; }
+  function addEvent(ev, quiet){
+    if (events.has(ev.seq)) return false;
+    events.set(ev.seq, ev);
+    if (!quiet && ev.player !== me){
+      buzz();
+      if (ev.kind === 'claim') toast(names()[ev.player] + ' asked you to approve a square');
+      else if (ev.kind === 'resolve') toast(names()[ev.player] + (ev.payload && ev.payload.ok ? ' approved a square' : ' said not yet'));
+    }
+    return true;
+  }
+  async function fetchAll(){
+    try {
+      var res = await sb.from('events').select('*').eq('room', room.code).gt('seq', maxSeq()).order('seq', {ascending: true}).limit(1000);
+      if (res.error) return false;
+      var changed = false;
+      (res.data || []).forEach(function(ev){ if (addEvent(ev, false)) changed = true; });
+      if (!room.p1_name){
+        var rr = await sb.from('rooms').select('*').eq('code', room.code).maybeSingle();
+        if (rr.data && rr.data.p1_name){ room = rr.data; changed = true; }
+      }
+      if (changed) render();
+      return true;
+    } catch(e){ return false; }
+  }
+  function subscribe(){
+    try {
+      if (channel) sb.removeChannel(channel);
+      channel = sb.channel('bingo-' + room.code)
+        .on('postgres_changes', {event: 'INSERT', schema: 'public', table: 'events', filter: 'room=eq.' + room.code}, function(p){
+          if (addEvent(p.new, false)) render();
+        })
+        .on('postgres_changes', {event: 'UPDATE', schema: 'public', table: 'rooms', filter: 'code=eq.' + room.code}, function(p){
+          room = p.new; render();
+        })
+        .subscribe(function(status){
+          live = status === 'SUBSCRIBED'; setConn();
+        });
+    } catch(e){ live = false; setConn(); }
+  }
+  function startPoll(){
+    clearInterval(pollTimer);
+    pollTimer = setInterval(function(){ if (!document.hidden) fetchAll(); }, 3000);
+    document.onvisibilitychange = function(){ if (!document.hidden && room) fetchAll(); };
+  }
+  function setConn(){
+    var c = $('conn'); c.className = 'conn ' + (live ? 'live' : 'slow');
+    $('connt').textContent = live ? 'Live' : 'Syncing';
+  }
+
+  async function send(kind, payload){
+    for (var t = 0; t < 4; t++){
+      var row = {room: room.code, seq: maxSeq() + 1, player: me, kind: kind, payload: payload || {}};
+      var res = await sb.from('events').insert(row);
+      if (!res.error){ addEvent(row, true); render(); return true; }
+      if (res.error.code === '23505'){ await fetchAll(); continue; }
+      toast('That did not send. Check your connection and try again.');
+      return false;
+    }
+    toast('Things moved at the same time. Try that again.');
+    return false;
+  }
+
+  /* ---------- rendering ---------- */
+  var CHECK = '<svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  function render(){
+    if (!room) return;
+    S = reduce(Array.from(events.values()));
+    var n = names();
+    $('d0').textContent = n[0].charAt(0).toUpperCase(); $('n0').textContent = n[0];
+    $('d1').textContent = room.p1_name ? n[1].charAt(0).toUpperCase() : '?'; $('n1').textContent = n[1];
+    $('d1').className = 'dot ' + (room.p1_name ? 'b' : 'w');
+    $('pl0').classList.toggle('me', me === 0); $('pl1').classList.toggle('me', me === 1);
+    setConn();
+
+    // invite
+    var waiting = !room.p1_name;
+    $('invite').classList.toggle('hidden', !waiting);
+    if (waiting) $('invcode').textContent = room.code;
+
+    // banner
+    var b = '';
+    if (S.phase === 'first'){
+      var w = n[S.first], o = n[1 - S.first];
+      b = '<div class="banner"><b>' + esc(w) + ' got bingo first.</b> ' + esc(w) + ' picks the next date activity. ' + esc(o) + ', you can still catch up for a double bingo.</div>';
+    } else if (S.phase === 'double'){
+      b = '<div class="banner"><b>Double bingo.</b> You both got a line. Keep stamping squares for fun.</div>';
+    }
+    $('banner').innerHTML = b;
+
+    // approvals waiting on me
+    var asks = '';
+    Object.keys(S.pending).forEach(function(k){
+      var c = S.pending[k];
+      if (c.p === me) return;
+      asks += '<div class="ask"><span class="k">Needs your approval</span><div class="t">' + esc(n[c.p]) + ': ' + esc(POOL[cards[c.p][c.sq]][1]) + '</div>' +
+        (c.note ? '<div class="n">“' + esc(c.note) + '”</div>' : '<div class="n"></div>') +
+        '<div class="row2"><button class="btn sm" data-res="1" data-claim="' + c.seq + '" type="button">Approve</button><button class="btn sm ghost" style="color:#2b2410;border-color:#d8c78a" data-res="0" data-claim="' + c.seq + '" type="button">Not yet</button></div></div>';
+    });
+    $('asks').innerHTML = asks;
+
+    // tabs
+    var tabs = '';
+    [me, 1 - me].forEach(function(p, i){
+      var lines = doneLines(S.stamped[p]).length;
+      tabs += '<button type="button" data-view="' + p + '" aria-pressed="' + (view === p) + '"><b>' + (p === me ? 'My card' : esc(n[p]) + '’s card') + '</b><small>' + S.stamped[p].size + ' of 24 · ' + lines + (lines === 1 ? ' line' : ' lines') + '</small></button>';
+    });
+    $('tabs').innerHTML = tabs;
+
+    // grid
+    var inLine = new Set(); doneLines(S.stamped[view]).forEach(function(l){ l.forEach(function(c){ inLine.add(c); }); });
+    var pendSq = {};
+    Object.keys(S.pending).forEach(function(k){ var c = S.pending[k]; if (c.p === view) pendSq[c.sq] = true; });
+    var g = '';
+    for (var i = 0; i < 25; i++){
+      var idx = cards[view][i];
+      if (idx === -1){ g += '<div class="cell free" aria-label="Free space">FREE</div>'; continue; }
+      var sq = POOL[idx], st = S.stamped[view].has(i);
+      var cls = 'cell' + (st ? ' st' + view : '') + (pendSq[i] ? ' pend' : '') + (inLine.has(i) ? ' line' : '');
+      g += '<button type="button" class="' + cls + '" data-sq="' + i + '" aria-label="' + esc(sq[1]) + (st ? ', approved' : (pendSq[i] ? ', waiting for approval' : '')) + '"><span class="tg">' + sq[2] + '</span>' + esc(sq[0]) + (st ? CHECK : '') + '</button>';
+    }
+    $('grid').innerHTML = g;
+    $('roomtag').textContent = 'Room ' + room.code;
+
+    if (sheet !== null) renderSheet();
+    if (S.phase === 'double' && !celebrated){ celebrated = true; showFinale(); }
+  }
+
+  /* ---------- sheet ---------- */
+  function renderSheet(){
+    var sq = sheet.sq, owner = sheet.owner, n = names(), idx = cards[owner][sq], q = POOL[idx];
+    var stamped = S.stamped[owner].has(sq), pend = null;
+    Object.keys(S.pending).forEach(function(k){ var c = S.pending[k]; if (c.p === owner && c.sq === sq) pend = c; });
+    var mine = owner === me, other = n[1 - me];
+    var h = '<div class="sheet-bg" id="sbg"><div class="sheet" role="dialog" aria-modal="true">';
+    h += '<div class="eyebrow"><span>' + (q[2] === 'C' ? 'Best on a call' : 'Any time this week') + '</span><span>' + (mine ? 'Your square' : esc(n[owner]) + '’s square') + '</span></div>';
+    h += '<h3>' + esc(q[1]) + '</h3>';
+    if (stamped){
+      var note = S.notes[owner][sq];
+      h += '<p class="sub">Approved.</p>' + (note ? '<div class="note">“' + esc(note) + '”</div>' : '');
+    } else if (pend){
+      if (mine){
+        h += '<p class="sub">Waiting for ' + esc(other) + ' to approve.</p>' + (pend.note ? '<div class="note">“' + esc(pend.note) + '”</div>' : '');
+        h += '<button class="btn ghost" id="withdraw" data-claim="' + pend.seq + '" type="button">Take it back</button>';
+      } else {
+        h += '<p class="sub">' + esc(n[owner]) + ' says this happened.</p>' + (pend.note ? '<div class="note">“' + esc(pend.note) + '”</div>' : '');
+        h += '<div class="row2"><button class="btn" data-res="1" data-claim="' + pend.seq + '" type="button">Approve</button><button class="btn ghost" data-res="0" data-claim="' + pend.seq + '" type="button">Not yet</button></div>';
+      }
+    } else if (mine){
+      if (!room.p1_name){
+        h += '<p class="sub">Your person needs to join before you can claim squares.</p>';
+      } else {
+        h += '<p class="sub">Did it? Add a line about what happened, then ask ' + esc(other) + ' to approve.</p>';
+        h += '<textarea id="note" maxlength="200" placeholder="Optional: what happened?" aria-label="What happened"></textarea>';
+        h += '<button class="btn" id="claim" type="button">Ask ' + esc(other) + ' to approve</button>';
+      }
+    } else {
+      h += '<p class="sub">' + esc(n[owner]) + ' will claim this one when it is done.</p>';
+    }
+    h += '<button class="btn ghost" id="close" type="button">Close</button></div></div>';
+    $('sheetmount').innerHTML = h;
+  }
+  function closeSheet(){ sheet = null; $('sheetmount').innerHTML = ''; }
+
+  /* ---------- finale ---------- */
+  function showFinale(){
+    var n = names();
+    $('finalemount').innerHTML = '<div class="finale"><div class="box"><h2>Double bingo.</h2>' +
+      '<p>' + esc(n[S.first]) + ' got there first and picks the next date activity.</p>' +
+      '<p>Then you each plan one small surprise for the other. Keep it secret until the next call.</p>' +
+      '<button class="btn" id="fclose" type="button">Keep playing</button>' +
+      '<button class="btn ghost" id="fnew" type="button">Leave this game</button></div></div>';
+    confetti();
+  }
+  function confetti(){
+    var box = $('confetti'); box.innerHTML = '';
+    var cols = ['#ff7a6b', '#62c8ff', '#ffc857', '#f4f4f4', '#d9433b', '#2f5fd0'];
+    for (var i = 0; i < 70; i++){
+      var s = document.createElement('i');
+      s.style.left = (Math.random() * 100) + '%'; s.style.background = cols[i % cols.length];
+      s.style.animationDuration = (2.2 + Math.random() * 2.2) + 's'; s.style.animationDelay = (Math.random() * 0.8) + 's';
+      box.appendChild(s);
+    }
+    setTimeout(function(){ box.innerHTML = ''; }, 6000);
+  }
+
+  /* ---------- events ---------- */
+  document.addEventListener('click', function(e){
+    var t = e.target.closest('button'); if (!t) return;
+    if (t.dataset.view !== undefined){ view = +t.dataset.view; render(); return; }
+    if (t.dataset.sq !== undefined){ sheet = {sq: +t.dataset.sq, owner: view}; renderSheet(); return; }
+    if (t.id === 'close'){ closeSheet(); return; }
+    if (t.id === 'claim'){
+      var note = ($('note').value || '').trim();
+      var sqn = sheet.sq; closeSheet(); send('claim', {sq: sqn, note: note}); return;
+    }
+    if (t.id === 'withdraw'){ var c1 = +t.dataset.claim; closeSheet(); send('withdraw', {claim: c1}); return; }
+    if (t.dataset.res !== undefined){ var cl = +t.dataset.claim, ok = t.dataset.res === '1'; closeSheet(); send('resolve', {claim: cl, ok: ok}); return; }
+    if (t.id === 'copy'){
+      var url = location.origin + location.pathname + '#' + room.code;
+      try { navigator.clipboard.writeText(url).then(function(){ toast('Invite link copied'); }, function(){ toast('Copy failed. Code: ' + room.code); }); }
+      catch(err){ toast('Copy failed. Code: ' + room.code); }
+      return;
+    }
+    if (t.id === 'leave' || t.id === 'fnew'){ leave(); return; }
+    if (t.id === 'fclose'){ $('finalemount').innerHTML = ''; return; }
+  });
+  document.addEventListener('click', function(e){ if (e.target && e.target.id === 'sbg') closeSheet(); });
+  $('create').addEventListener('click', createRoom);
+  $('join').addEventListener('click', joinRoom);
+  $('code').addEventListener('input', function(){ this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+
+  function leave(){
+    clearSession(); clearInterval(pollTimer);
+    try { if (channel) sb.removeChannel(channel); } catch(e){}
+    room = null; events = new Map(); closeSheet(); $('finalemount').innerHTML = '';
+    $('game').classList.add('hidden'); $('lobby').classList.remove('hidden');
+    try { history.replaceState(null, '', location.pathname); } catch(e){}
+  }
+
+  /* ---------- boot ---------- */
+  (async function boot(){
+    if (!cfg || !window.supabase){
+      lobbyErr('The game could not load its connection. Refresh the page.');
+      $('create').disabled = true; $('join').disabled = true; return;
+    }
+    sb = window.supabase.createClient(cfg.url, cfg.key);
+    var h = (location.hash || '').replace('#', '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    var saved = loadSession();
+    if (saved && saved.code && (!h || h === saved.code)){
+      try {
+        var res = await sb.from('rooms').select('*').eq('code', saved.code).maybeSingle();
+        if (res.data){ await enterRoom(res.data, saved.slot); return; }
+      } catch(e){}
+      clearSession();
+    }
+    if (h){ $('code').value = h; $('name').focus(); }
+  })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Date Night</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=DM+Mono:wght@400;500&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0e1326;--ink2:#161d3a;--line:#2b3668;--text:#e9ecfa;--mute:#9aa4cf;--lamp:#ffc857;color-scheme:dark;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;--body:"Hanken Grotesk",system-ui,sans-serif;--mono:"DM Mono",ui-monospace,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ink);background-image:radial-gradient(900px 500px at 50% -10%,#1d2750 0%,transparent 70%);color:var(--text);font-family:var(--body);line-height:1.45}
+.stripe{height:10px;background:repeating-linear-gradient(135deg,#d9433b 0 14px,#f4f4f4 14px 28px,#2f5fd0 28px 42px,#f4f4f4 42px 56px)}
+.wrap{max-width:480px;margin:0 auto;padding:18px 16px 40px}
+h1{font-family:var(--display);font-size:clamp(2.5rem,12vw,3.6rem);font-weight:800;line-height:.95;margin:14px 0 10px;text-wrap:balance}
+h1 span{color:var(--lamp)}
+.lede{color:var(--mute);font-size:1.05rem;max-width:34ch;margin:0 0 22px}
+.games{display:flex;flex-direction:column;gap:10px}
+a.game{display:block;text-decoration:none;color:inherit;background:var(--ink2);border:1.5px solid var(--line);border-radius:16px;padding:16px}
+a.game:hover,a.game:focus-visible{border-color:var(--lamp);outline:none}
+a.game b{display:block;font-family:var(--display);font-size:1.3rem;margin-bottom:2px}
+a.game span{color:var(--mute);font-size:.95rem}
+</style>
+</head>
+<body>
+<div class="stripe"></div>
+<div class="wrap">
+  <h1>Date<br><span>Night</span></h1>
+  <p class="lede">Games for two people who are far apart and getting closer.</p>
+  <div class="games">
+    <a class="game" href="bingo/"><b>Date Night Bingo</b><span>Two cards. Fill a line. Your person approves each square.</span></a>
+  </div>
+</div>
+</body>
+</html>
