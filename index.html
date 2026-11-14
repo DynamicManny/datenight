@@ -7,7 +7,7 @@
 <title>Khadi × Manny</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Caveat:wght@500;700&family=DM+Mono:wght@400;500&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Caveat:wght@500;700&family=DM+Mono:wght@400;500&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{--ink:#0e1326;--ink2:#161d3a;--text:#e9ecfa;--mute:#9aa4cf;--lamp:#ffc857;--a:#ff7a6b;--b:#62c8ff;color-scheme:dark}
 *{box-sizing:border-box}
@@ -27,7 +27,10 @@ body{margin:0;min-height:100vh;background:var(--ink) radial-gradient(900px 520px
 .games{display:grid;gap:14px;text-align:left}
 .g{display:block;text-decoration:none;color:#161a33;background:#f1f3fb;border-radius:20px;padding:20px 18px 18px;border-top:8px solid transparent;border-image:repeating-linear-gradient(135deg,#d9433b 0 14px,#f4f4f4 14px 28px,#2f5fd0 28px 42px,#f4f4f4 42px 56px) 8;box-shadow:0 14px 40px rgba(0,0,0,.35);transition:transform .15s ease;position:relative}
 .g:active{transform:scale(.985)}
-.g:nth-child(1){transform:rotate(-1deg)}.g:nth-child(2){transform:rotate(.9deg)}
+.g:nth-child(1){transform:rotate(-1deg)}.g:nth-child(2){transform:rotate(.9deg)}.g:nth-child(3){transform:rotate(-.7deg)}
+.g.fn{background:linear-gradient(165deg,#24121a,#141831 60%,#0f1a2e);color:#f6efe0;border-image:linear-gradient(90deg,#ff7a6b,#ffc857,#62c8ff) 8}
+.g.fn small{color:#ffc857}.g.fn p{color:#b9bedb}.g.fn h2{font-family:Anton,Impact,sans-serif;font-weight:400;letter-spacing:.03em;text-transform:uppercase;font-size:2rem}
+.mini .gv{font-family:Anton,Impact,sans-serif;font-size:1rem;letter-spacing:.06em}.mini .gv i{font-style:normal;color:#ff7a6b}.mini .gv u{text-decoration:none;color:#62c8ff}
 .g small{font-family:"DM Mono",monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:#5b6390}
 .g h2{font-family:"Bricolage Grotesque",sans-serif;font-size:1.7rem;line-height:1.05;margin:6px 0 4px}
 .g p{margin:0;color:#4a5280;font-size:.95rem}
@@ -50,6 +53,8 @@ body{margin:0;min-height:100vh;background:var(--ink) radial-gradient(900px 520px
       <div class="mini"><b class="k"></b><b></b><b class="m"></b><b></b><b class="k"></b></div><span class="go">play</span></a>
     <a class="g" href="wavelength/"><small>Game two</small><h2>Same Wavelength</h2><p>One prompt, one word each. Can you land on the same one?</p>
       <div class="mini"><svg viewBox="0 0 96 22"><path d="M2 11c8-14 14-14 22 0s14 14 22 0 14-14 22 0 14 14 22 0" fill="none" stroke="#ff7a6b" stroke-width="3" stroke-linecap="round"/><path d="M2 11c8-14 14-14 22 0s14 14 22 0 14-14 22 0 14 14 22 0" fill="none" stroke="#62c8ff" stroke-width="3" stroke-linecap="round" opacity=".75" transform="translate(5 0)"/></svg></div><span class="go">play</span></a>
+    <a class="g fn" href="fight/"><small>Game three</small><h2>Fight Night</h2><p>Hot takes, one side each. Same corner or a fight?</p>
+      <div class="mini"><span class="gv"><i>KHADI</i> vs <u>MANNY</u></span></div><span class="go">step in</span></a>
   </div>
 </div>
 </body>
