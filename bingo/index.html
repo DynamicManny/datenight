@@ -154,6 +154,15 @@ button:focus-visible,textarea:focus-visible{outline:3px solid var(--lamp);outlin
 .sheet .btn{background:#1b1f45;color:#fff;margin-top:10px}
 .sheet .btn.ghost{background:transparent;color:var(--cardtext);border-color:#c9cde3}
 .sheet .note{margin:8px 0;padding:10px 14px;border-radius:12px;background:#fff7dc;border:1.5px dashed #d8c78a;font-family:var(--hand);font-size:1.45rem;line-height:1.1}
+.sheet.tall{max-height:88vh;overflow-y:auto;overscroll-behavior:contain}
+.mem{display:block;width:100%;text-align:left;background:#fff;border:1.5px solid #c9cde3;border-radius:14px;padding:11px 13px;margin-top:9px;color:var(--cardtext)}
+.mem b{font-family:var(--display);font-size:1.1rem;display:block}
+.mem span{font-size:.85rem;color:var(--cardmute)}
+.story{border-left:5px solid var(--c);background:#fff;border-radius:0 12px 12px 0;padding:8px 12px;margin-top:9px}
+.story.k{--c:var(--a)} .story.m{--c:var(--b)}
+.story .q{font-weight:700;font-size:.98rem;line-height:1.2}
+.story .t{font-family:var(--hand);font-size:1.4rem;line-height:1.1;margin-top:3px}
+.story .d{font-family:var(--mono);font-size:.7rem;color:var(--cardmute);margin-top:4px}
 .sheet .when{font-family:var(--mono);font-size:.74rem;color:var(--cardmute);margin:6px 0 0}
 
 .foot{margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-family:var(--mono);font-size:.72rem;color:var(--mute)}
@@ -231,7 +240,7 @@ button:focus-visible,textarea:focus-visible{outline:3px solid var(--lamp);outlin
     <div class="grid" id="grid"></div>
 
     <div class="foot">
-      <span><button type="button" id="newcards">New cards</button></span>
+      <span><button type="button" id="memories">Memories</button> &nbsp; <button type="button" id="newcards">New cards</button></span>
       <span><button type="button" id="leave">Not you?</button></span>
     </div>
   </section>
@@ -389,12 +398,12 @@ function doneLines(stampedSet){
 // Everything about the game is derived from the ordered event list, so both phones always agree.
 function reduce(events, baseSeed){
   var seed = baseSeed;
-  var stamped = [new Set(), new Set()], notes = [{}, {}], dates = [{}, {}], pending = {}, bingoSeq = [null, null];
+  var stamped = [new Set(), new Set()], notes = [{}, {}], dates = [{}, {}], pending = {}, bingoSeq = [null, null], log = [];
   var list = events.slice().sort(function(a, b){ return a.seq - b.seq; });
   list.forEach(function(ev){
     var pl = ev.payload || {};
     if (ev.kind === 'newgame'){
-      stamped = [new Set(), new Set()]; notes = [{}, {}]; dates = [{}, {}]; pending = {}; bingoSeq = [null, null];
+      stamped = [new Set(), new Set()]; notes = [{}, {}]; dates = [{}, {}]; pending = {}; bingoSeq = [null, null]; log = [];
       if (pl.seed) seed = String(pl.seed);
       return;
     }
@@ -410,6 +419,7 @@ function reduce(events, baseSeed){
       delete pending[pl.claim];
       if (pl.ok){
         stamped[c.p].add(c.sq); notes[c.p][c.sq] = c.note; dates[c.p][c.sq] = ev.created_at || null;
+        log.push({p: c.p, sq: c.sq, note: c.note, date: ev.created_at || null, seq: ev.seq});
         if (bingoSeq[c.p] === null && doneLines(stamped[c.p]).length) bingoSeq[c.p] = ev.seq;
       }
     } else if (ev.kind === 'withdraw'){
@@ -423,7 +433,16 @@ function reduce(events, baseSeed){
     phase = (bingoSeq[0] !== null && bingoSeq[1] !== null) ? 'double' : 'first';
     first = bingoSeq[0] === null ? 1 : (bingoSeq[1] === null ? 0 : (bingoSeq[0] < bingoSeq[1] ? 0 : 1));
   }
-  return {seed: seed, stamped: stamped, notes: notes, dates: dates, pending: pending, bingoSeq: bingoSeq, phase: phase, first: first};
+  return {seed: seed, stamped: stamped, notes: notes, dates: dates, pending: pending, bingoSeq: bingoSeq, phase: phase, first: first, log: log};
+}
+// Every card ever dealt, oldest first. Nothing is deleted when new cards are dealt, so old cards can always be rebuilt.
+function allGames(events, baseSeed){
+  var list = events.slice().sort(function(a, b){ return a.seq - b.seq; });
+  var segs = [[]], dealt = [null];
+  list.forEach(function(ev){
+    if (ev.kind === 'newgame'){ segs.push([ev]); dealt.push(ev.created_at || null); } else segs[segs.length - 1].push(ev);
+  });
+  return segs.map(function(seg, i){ var st = reduce(seg, baseSeed); st.dealt = dealt[i]; return st; });
 }
 // LOGIC END
 
@@ -630,9 +649,36 @@ function reduce(events, baseSeed){
   }
 
   /* ---------- sheet ---------- */
+  function renderMemories(){
+    var old = document.querySelector('.sheet.tall'), top = old ? old.scrollTop : 0;
+    var gs = allGames(Array.from(events.values()), room.seed), n = gs.length, h = '<div class="sheet-bg" id="sbg"><div class="sheet tall" role="dialog" aria-modal="true">';
+    if (sheet.game === undefined || sheet.game === null || !gs[sheet.game]){
+      h += '<div class="eyebrow"><span>Khadi × Manny</span><span>Memories</span></div><h3>Every card you have played</h3><p class="sub">Tap one to read the notes.</p>';
+      for (var i = n - 1; i >= 0; i--){
+        var g = gs[i], c0 = g.stamped[0].size, c1 = g.stamped[1].size;
+        var tag = g.phase === 'double' ? 'Double bingo' : (g.phase === 'first' ? NAMES[g.first] + ' got bingo' : (i === n - 1 ? 'In play' : 'Unfinished'));
+        var when = g.log.length ? fmtDate(g.log[0].date) : (g.dealt ? fmtDate(g.dealt) : '');
+        h += '<button class="mem" type="button" data-game="' + i + '"><b>Card ' + (i + 1) + (i === n - 1 ? ' (this one)' : '') + '</b><span>' + esc(when ? when + ' · ' : '') + 'Khadi ' + c0 + ' · Manny ' + c1 + ' · ' + esc(tag) + '</span></button>';
+      }
+    } else {
+      var G = gs[sheet.game], cs = buildCards(G.seed);
+      h += '<div class="eyebrow"><span>Card ' + (sheet.game + 1) + '</span><span>' + G.log.length + ' stamped</span></div><h3>What you did</h3>';
+      if (!G.log.length) h += '<p class="sub">Nothing was stamped on this card.</p>';
+      G.log.forEach(function(e){
+        var q = POOL[cs[e.p][e.sq]];
+        h += '<div class="story ' + (e.p === 0 ? 'k' : 'm') + '"><div class="q">' + esc(q[1]) + '</div>' + (e.note ? '<div class="t">“' + esc(e.note) + '”</div>' : '') +
+             '<div class="d">' + esc(NAMES[e.p]) + (e.date ? ' · ' + esc(fmtDate(e.date)) : '') + '</div></div>';
+      });
+      h += '<button class="btn ghost" type="button" data-game="-1">All cards</button>';
+    }
+    h += '<button class="btn ghost" id="close" type="button">Close</button></div></div>';
+    $('sheetmount').innerHTML = h;
+    var nw = document.querySelector('.sheet.tall'); if (nw && old) nw.scrollTop = top;
+  }
   function renderSheet(){
+    if (sheet.mem){ renderMemories(); return; }
     if (sheet.confirm){
-      $('sheetmount').innerHTML = '<div class="sheet-bg" id="sbg"><div class="sheet" role="dialog" aria-modal="true"><h3>Deal new cards?</h3><p class="sub">This clears both cards and deals a fresh set of squares.</p><button class="btn" id="donew" type="button">Deal new cards</button><button class="btn ghost" id="close" type="button">Keep these</button></div></div>';
+      $('sheetmount').innerHTML = '<div class="sheet-bg" id="sbg"><div class="sheet" role="dialog" aria-modal="true"><h3>Deal new cards?</h3><p class="sub">Fresh squares for both of you. The old cards and every note are kept in Memories.</p><button class="btn" id="donew" type="button">Deal new cards</button><button class="btn ghost" id="close" type="button">Keep these</button></div></div>';
       return;
     }
     var sq = sheet.sq, owner = sheet.owner, idx = cards[owner][sq], q = POOL[idx];
@@ -713,6 +759,8 @@ function reduce(events, baseSeed){
     if (t.id === 'withdraw'){ var c1 = +t.dataset.claim; closeSheet(); send('withdraw', {claim: c1}); return; }
     if (t.dataset.res !== undefined){ var cl = +t.dataset.claim, ok = t.dataset.res === '1'; closeSheet(); send('resolve', {claim: cl, ok: ok}); return; }
     if (t.id === 'leave'){ leave(); return; }
+    if (t.id === 'memories'){ sheet = {mem: true}; renderSheet(); return; }
+    if (t.dataset.game !== undefined){ var gi = +t.dataset.game; sheet = {mem: true, game: gi < 0 ? null : gi}; renderSheet(); return; }
     if (t.id === 'newcards'){ sheet = {confirm: true}; renderSheet(); return; }
     if (t.id === 'donew' || t.id === 'fnew'){ closeSheet(); $('finalemount').innerHTML = ''; send('newgame', {seed: makeSeed()}); return; }
     if (t.id === 'fclose'){ $('finalemount').innerHTML = ''; return; }
