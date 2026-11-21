@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { reduce, stageName, hintKey, askable, keeperOf, captainOf, CLOCK_SECS, MAX_STRIKES, FLARES } from './logic.js';
-import { openRoom, useEvents, loadSlot, saveSlot, clearSlot, friendly, serverNow } from './sync.js';
+import { reduce, stageName, hintKey, askable, keeperOf, captainOf, CLOCK_SECS, MAX_STRIKES, FLARES, STAGES } from './logic.js';
+import { openRoom, useEvents, useLive, loadSlot, saveSlot, clearSlot, friendly, serverNow } from './sync.js';
 import { NAMES, Btn, Lantern, FlareIcon, buzz, mmss } from './ui.jsx';
 import Sea from './Sea.jsx';
 import { TowerStage, RadioSwitch } from './Tower.jsx';
-import { ShipStage } from './Ship.jsx';
+import { CaptainTower, CaptainFog } from './Captain.jsx';
+import KeeperFog from './KeeperFog.jsx';
+import { usePartnerHold, useMyHold } from './Controls.jsx';
 
 export default function App() {
   const [slot, setSlot] = useState(loadSlot);
@@ -32,7 +34,7 @@ function Lobby({ busy, err, onPick }) {
     <main className="lobby">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9 }}>
         <div className="eyebrow">A storm on the northern coast</div>
-        <h1 className="title">Keep<br /><em>the</em> Light</h1>
+        <h1 className="title">Keep the Light</h1>
         <p className="lede">A keeper in a dark tower. A captain somewhere in the fog. Neither gets home alone.</p>
       </motion.div>
       <motion.div className="who" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
@@ -69,7 +71,7 @@ function comms(M, names) {
     reset: M.room === 1 ? 'Too many slips. The storm knocks the tower back to dark.' : 'The hull can’t take more. The ship pulls back to open water.',
     roomclear: 'The light is burning. Out in the fog, a ship turns toward it.',
     wrong: L.what === 'prime' ? 'The lamp coughs and gutters out.' : L.what === 'pin' ? 'Clunk. Wrong pin. The gears groan.' : 'The light blinks a pattern no ship knows.',
-    clear: L.stage === 'clockwork' ? 'The lamp catches. Now the lens won’t turn.' : L.stage === 'signal' ? 'The lens turns. Now it needs its own signal.' : 'Through the gate. The harbor lights are close.',
+    clear: { clockwork: 'The lamp catches. Now the lens won\u2019t turn.', signal: 'The lens turns. Now it needs its own signal.', beam: 'The signal is set. Now find the ship in the dark.', harbor: 'Through the gate. The harbor lights are close.' }[L.stage] || 'Onward.',
     scrape: 'Something scrapes along the hull.',
     move: 'The ship creeps forward through the fog.',
     drift: 'The current shoves the ship sideways.',
@@ -77,35 +79,50 @@ function comms(M, names) {
     moored: 'Bumpers against the dock. Throw the line.',
     wrongberth: 'Wrong berth. The harbor master waves you off.',
     line: names[L.by] + ' has the line.',
+    storm: 'A wave breaks over the bow. The ship shudders.',
     complete: 'Home.',
     timeup: 'The storm peaks and passes.'
   };
   return map[L.kind] || 'The storm presses against the windows.';
 }
 
-function Hud({ M, left, names }) {
+const STAGE_LABEL = { prime: 'Prime the lamp', clockwork: 'Free the clockwork', signal: 'Set the signal', beam: 'Find the ship', rocks: 'Clear the rocks', harbor: 'Make harbor' };
+function Hud({ M, left, names, live }) {
+  const idx = M.room === 1 ? M.stage : STAGES[1].length + M.stage, total = STAGES[1].length + STAGES[2].length;
   return (
-    <>
-      <div className="hud">
+    <div className="hud">
+      <div className="hudrow">
         <div className="lanterns" role="img" aria-label={`${MAX_STRIKES - M.strikes} of ${MAX_STRIKES} chances left`}>
           {Array.from({ length: MAX_STRIKES }, (_, i) => <Lantern key={i} on={i < MAX_STRIKES - M.strikes} />)}
         </div>
-        <div className={'clock' + (left !== null && left <= 60 ? ' low' : '')}>
-          {left === null ? 'No clock' : mmss(left)}
-          <small>{left === null ? 'take your time' : 'until the storm peaks'}</small>
-        </div>
-        <div className="flares"><FlareIcon /><b>{FLARES - M.flares}</b><small>flares</small></div>
+        <div className={'clock' + (left !== null && left <= 60 ? ' low' : '')}>{left === null ? 'No clock' : mmss(left)}</div>
+        <div className="flares" aria-label={`${FLARES - M.flares} flares left`}><FlareIcon /><b>{FLARES - M.flares}</b></div>
+      </div>
+      <div className="hudrow2">
+        <span className="stage">{STAGE_LABEL[stageName(M)]}</span>
+        <span className="pips">{Array.from({ length: total }, (_, i) => <i key={i} className={i < idx ? 'done' : i === idx ? 'now' : ''} />)}</span>
+        <span className={'link-dot' + (live ? ' on' : '')} title={live ? 'Phones linked' : 'Linking phones'} />
       </div>
       <AnimatePresence mode="wait">
-        <motion.div key={M.last.seq} className="comms" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+        <motion.p key={M.last.seq} className="comms" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
           {comms(M, names)}
-        </motion.div>
+        </motion.p>
       </AnimatePresence>
-      <div className="where">
-        <span>{M.room === 1 ? 'The tower' : 'The fog'} · {M.room === 1 ? ['Prime the lamp', 'Free the clockwork', 'Set the signal'][M.stage] : ['Clear the rocks', 'Make harbor'][M.stage]}</span>
-        <span className="pips">{[0, 1, 2, 3, 4].map((i) => { const idx = M.room === 1 ? M.stage : 3 + M.stage; return <i key={i} className={i < idx ? 'done' : i === idx ? 'now' : ''} />; })}</span>
-      </div>
-    </>
+    </div>
+  );
+}
+
+function ShipStatus({ live }) {
+  const el = useRef(null), bar = useRef(null);
+  useEffect(() => live.on('storm', (p) => {
+    if (el.current) el.current.style.transform = `rotate(${p.ang * 0.6}deg)`;
+    if (bar.current) { bar.current.style.transform = `scaleX(${p.strain / 100})`; bar.current.parentNode.classList.toggle('bad', p.strain > 60); }
+  }), [live]);
+  return (
+    <div className="shipstat" aria-hidden="true">
+      <svg viewBox="-20 -16 40 22"><g ref={el} style={{ transformOrigin: '0 0', transformBox: 'view-box' }}><path d="M-14 0h28l-5 5h-18z" fill="#d6e6e2" /><path d="M0 0v-13" stroke="#d6e6e2" strokeWidth="1.5" /><circle cx="0" cy="-14" r="1.6" fill="#ffb52e" /></g></svg>
+      <span>The ship</span><div className="sbar"><i ref={bar} /></div>
+    </div>
   );
 }
 
@@ -137,7 +154,7 @@ function Brief({ M, me, send }) {
   return (
     <div className="brief">
       <motion.div className="logbook" initial={{ opacity: 0, rotate: -2, y: 30 }} animate={{ opacity: 1, rotate: -0.6, y: 0 }} transition={{ duration: 0.7 }}>
-        <div className="lb-date">Northern Coast · 11:48 PM</div>
+        <div className="lb-date">The northern coast, 11:48 at night</div>
         <h2>Keep the Light</h2>
         <p>The storm came in faster than the forecast. Out on the point, the old light has gone dark, and somewhere past the reef a ship is feeling its way home.</p>
         <p>The Keeper knows every gear in that tower. The Captain knows every chart aboard that ship. Tonight, neither is enough on their own.</p>
@@ -210,12 +227,12 @@ function LogSheet({ log, onClose }) {
     <motion.div className="sheet-bg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <motion.div className="sheet" role="dialog" aria-modal="true" aria-label="The logbook" initial={{ y: 60 }} animate={{ y: 0 }} exit={{ y: 60 }}>
         <h3>The logbook</h3>
-        <p className="tiny">{done} brought home · {log.length - done} not finished</p>
+        <p className="tiny">{done} brought home, {log.length - done} not finished</p>
         {!L.length && <p className="tiny">No storms on record yet.</p>}
         {L.map((x) => (
           <div className="mrow" key={x.n}>
             <div className="mh"><span>Night {x.n}</span><em className={x.result}>{x.result === 'complete' ? 'Home' : x.result === 'failed' ? 'Rode it out' : 'Called off'}</em></div>
-            <div className="mm">{x.date ? new Date(x.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''}{x.result === 'complete' && x.secs !== null ? ' · ' + mmss(x.secs) : ''} · Keeper {NAMES[x.keeper]} · {x.resets} restarts · {x.flares} flares</div>
+            <div className="mm">{[x.date ? new Date(x.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : null, x.result === 'complete' && x.secs !== null ? mmss(x.secs) : null, NAMES[x.keeper] + ' kept the light', x.resets + ' restarts', x.flares + ' flares'].filter(Boolean).join(', ')}</div>
             {[0, 1].map((p) => x.debrief[p] ? <div key={p} className={'ans ' + (p ? 'b' : 'a')}><b>{NAMES[p]}</b>{x.debrief[p]}</div> : null)}
           </div>
         ))}
@@ -252,7 +269,9 @@ function Fx({ fx, onDone }) {
       )}
       {fx && fx.kind === 'lighton' && (
         <motion.div key={fx.id} className="ov lighton" onClick={onDone} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <motion.div className="sweep" initial={{ rotate: -70, opacity: 0 }} animate={{ rotate: 40, opacity: [0, 1, 1, 0.8] }} transition={{ duration: 3.6, ease: 'easeInOut' }} />
+          {fx.keeper
+            ? <motion.div className="sweep" initial={{ rotate: -70, opacity: 0 }} animate={{ rotate: 40, opacity: [0, 1, 1, 0.8] }} transition={{ duration: 3.6, ease: 'easeInOut' }} />
+            : <motion.div className="crossing" initial={{ x: '-120%' }} animate={{ x: '120%' }} transition={{ duration: 1.6, ease: 'easeInOut' }} />}
           <div>
             <motion.h2 className="ovbig gold" initial={{ opacity: 0, letterSpacing: '0.4em' }} animate={{ opacity: 1, letterSpacing: '0.02em' }} transition={{ delay: 0.6, duration: 1.4 }}>The light is on</motion.h2>
             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.6 }}>Out in the fog, a ship turns toward it.</motion.p>
@@ -285,27 +304,31 @@ function roleFx(M, me) {
   if (M.room === 1) {
     return keeper
       ? { kind: 'role', where: 'The tower', title: 'The Keeper', cls: 'keeper', text: 'The lamp is cold. You know every gear in this tower.' }
-      : { kind: 'role', where: 'Out past the reef', title: 'The Captain', cls: 'captain', text: 'No light on the point. Your charts are all you have.' };
+      : { kind: 'role', where: 'Out past the reef', title: 'The Captain', cls: 'captain', text: 'No light on the point and the storm is on you. Keep the bow into the waves.' };
   }
   return keeper
     ? { kind: 'role', where: 'The fog', title: 'The Keeper', cls: 'keeper', text: 'From up here you can see the rocks. They can’t.' }
-    : { kind: 'role', where: 'The fog', title: 'The Captain', cls: 'captain', text: 'The light is on, but the fog is thick. You can’t see the rocks.' };
+    : { kind: 'role', where: 'The fog', title: 'The Captain', cls: 'captain', text: 'You can’t see past the bow, and your chart is old. The tower is the only thing you can trust.' };
 }
 
 /* ---------------------------------------------------------------- */
 function Game({ room, me, onLeave }) {
-  const { events, send, live, loaded } = useEvents(room, me);
+  const { events, send, loaded } = useEvents(room, me);
+  const live = useLive(room, me);
   const S = useMemo(() => reduce(events, room.seed), [events, room.seed]);
   const { M } = S;
   const names = NAMES;
   const left = useClock(M, send);
   const [fx, setFx] = useState(null);
   const [logOpen, setLogOpen] = useState(false);
-  const [shake, setShake] = useState(0);
   const [abortArm, setAbortArm] = useState(false);
+  const [flareUntil, setFlareUntil] = useState(0);
   const seen = useRef(null), fxId = useRef(0), queued = useRef(null);
   const show = (o) => setFx({ ...o, id: ++fxId.current });
   const fxDone = () => { if (queued.current) { const q = queued.current; queued.current = null; show(q); } else setFx(null); };
+  const isKeeper = keeperOf(M) === me, who = isKeeper ? 'keeper' : 'captain';
+  const [myHold, setMyHold] = useMyHold(live, who);
+  const partnerHold = usePartnerHold(live, isKeeper ? 'captain' : 'keeper');
 
   useEffect(() => {
     if (!loaded) return;
@@ -314,74 +337,100 @@ function Game({ room, me, onLeave }) {
     seen.current = M.last.seq;
     const k = M.last.kind;
     if (k === 'start') { buzz([30, 40, 30]); show(roleFx(M, me)); }
-    else if (k === 'wrong' || k === 'scrape' || k === 'wrongberth') { buzz([70, 40, 90]); setShake((s) => s + 1); show({ kind: 'wrong' }); }
+    else if (k === 'wrong' || k === 'scrape' || k === 'wrongberth' || k === 'storm') { buzz([70, 40, 90]); show({ kind: 'wrong' }); }
     else if (k === 'reset') { buzz([120, 60, 160]); show({ kind: 'reset', title: M.room === 1 ? 'The tower goes dark' : 'Back to open water', text: 'Three slips. Fresh start, new puzzles. Breathe.' }); }
-    else if (k === 'clear') { buzz(40); show({ kind: 'clear', title: { clockwork: 'The lamp is lit', signal: 'The lens is turning', harbor: 'Through the gate' }[M.last.stage] || 'Clear' }); }
-    else if (k === 'roomclear') { buzz([40, 60, 40, 60, 120]); queued.current = roleFx(M, me); show({ kind: 'lighton' }); }
-    else if (k === 'flare') { buzz([20, 30, 60]); show({ kind: 'flare' }); }
+    else if (k === 'clear') { buzz(40); show({ kind: 'clear', title: { clockwork: 'The lamp is lit', signal: 'The lens is turning', beam: 'The signal is set', harbor: 'Through the gate' }[M.last.stage] || 'Clear' }); }
+    else if (k === 'roomclear') {
+      // both phones play the same beam at the same moment: hers first, then it crosses his
+      const ev = events.find((e) => e.seq === M.last.seq), at = ev && ev.created_at ? Date.parse(ev.created_at) : serverNow();
+      const delay = Math.max(0, at + (isKeeper ? 700 : 1500) - serverNow());
+      buzz([40, 60, 40, 60, 120]); queued.current = roleFx(M, me);
+      setTimeout(() => show({ kind: 'lighton', keeper: isKeeper }), Math.min(delay, 2500));
+    }
+    else if (k === 'flare') { buzz([20, 30, 60]); setFlareUntil(performance.now() + 7000); show({ kind: 'flare' }); }
+    else if (k === 'moored') { buzz([40, 40, 40]); }
     else if (k === 'complete') { buzz([40, 60, 40, 60, 160]); show({ kind: 'complete', title: 'Home', text: 'The line is tied. The light is still turning.' }); }
     else if (k === 'timeup') { buzz([200, 80, 200]); show({ kind: 'timeup', title: 'The storm peaks', text: 'The ship turns back to ride it out.' }); }
-    else if (k === 'channel' && me === captainOf(M)) buzz([20, 30, 20]);
+    else if (k === 'channel' && !isKeeper) buzz([20, 30, 20]);
     else if (k === 'ask' && me !== M.last.by) buzz([30, 50, 30]);
   }, [M.last.seq, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // the Captain's phone ties up once both of you have held for a moment
+  useEffect(() => {
+    if (!(M.phase === 'play' && M.room === 2 && M.moored && !isKeeper)) return undefined;
+    let since = null, sent = false;
+    const t = setInterval(() => {
+      if (myHold.current && partnerHold) { if (since === null) since = performance.now(); if (!sent && performance.now() - since > 1500) { sent = true; send('tie', { m: M.n, a: M.att[2] }); } }
+      else since = null;
+    }, 100);
+    return () => clearInterval(t);
+  }, [M.phase, M.room, M.moored, M.n, M.att, isKeeper, partnerHold, myHold, send]);
+
   useEffect(() => { if (!abortArm) return undefined; const t = setTimeout(() => setAbortArm(false), 3000); return () => clearTimeout(t); }, [abortArm]);
 
-  const hands = S.hands, isKeeper = keeperOf(M) === me;
   const act = (kind, extra) => send(kind, { m: M.n, a: M.att[M.room], s: M.stage, ...extra });
   const hinted = M.hint === hintKey(M);
+  const name = M.phase === 'play' ? stageName(M) : null;
+  const beamDeg = useRef(null);
+  useEffect(() => { if (!(isKeeper && name === 'beam')) beamDeg.current = null; else if (beamDeg.current === null) beamDeg.current = 0; }, [isKeeper, name]);
+  const hold = { set: setMyHold, partner: partnerHold };
+  const playing = M.phase === 'play';
   const scene = M.phase === 'done' ? { storm: 0.05, fog: 0, light: true, stars: true }
     : M.phase === 'failed' ? { storm: 0.85, fog: 0.2, light: true }
     : M.phase === 'brief' ? { storm: 0.65, light: false }
-    : M.room === 1 ? { storm: isKeeper ? 0.85 : 0.95, light: false }
+    : M.room === 1 ? { storm: 0.85, light: false, lighthouse: false, beamRef: name === 'beam' ? beamDeg : null }
     : { storm: 0.35, fog: 1, light: true };
+  const hud = playing ? <Hud M={M} left={left} names={names} live={live.linked} /> : null;
+  const help = playing ? <HelpBar M={M} me={me} hands={S.hands} send={send} names={names} /> : null;
+  const foot = (
+    <footer className="foot">
+      <button type="button" className="logbtn" onClick={() => setLogOpen(true)}>Logbook</button>
+      {playing && <button type="button" className="link" onClick={() => { if (abortArm) { setAbortArm(false); send('newmission', { m: M.n }); } else setAbortArm(true); }}>{abortArm ? 'Tap again to call it off' : 'Call it off'}</button>}
+      <a className="link" href="../">All games</a>
+      <button type="button" className="link" onClick={onLeave}>Not you?</button>
+    </footer>
+  );
+
+  let body;
+  if (!loaded) body = <main className="game"><p className="tiny center">Climbing the stairs…</p></main>;
+  else if (M.phase === 'brief') body = <main className="game"><header className="top"><div className="wm">Keep the Light</div></header><Brief M={M} me={me} send={send} />{foot}</main>;
+  else if (!playing) body = <main className="game"><header className="top"><div className="wm">Keep the Light</div></header><End M={M} S={S} me={me} send={send} openLog={() => setLogOpen(true)} />{foot}</main>;
+  else if (M.room === 1 && isKeeper) body = (
+    <div className="play keeper">
+      <div className="scene s-window">{hud}<ShipStatus live={live} /></div>
+      <div className="console">
+        {name === 'beam' && <BeamBridge beamDeg={beamDeg} />}
+        <TowerStage name={name} inst={S.inst} M={M} act={act} hinted={hinted} beam={{ live, partnerName: names[captainOf(M)], myHold, partnerHold, setHold: setMyHold }} />
+        <RadioSwitch open={M.channel} onOpen={() => { buzz(25); send('channel', { m: M.n }); }} captain={names[captainOf(M)]} />
+        {help}
+        {foot}
+      </div>
+    </div>
+  );
+  else if (M.room === 1) body = (
+    <>
+      <CaptainTower M={M} inst={S.inst} seed={room.seed} keeper={names[keeperOf(M)]} live={live} send={send} hinted={hinted} hold={hold} hud={hud} />
+      <div className="floathelp">{help}</div>
+    </>
+  );
+  else if (isKeeper) body = <><KeeperFog M={M} inst={S.inst} live={live} hold={hold} captain={names[captainOf(M)]} flareUntil={flareUntil} hud={hud} /><div className="floathelp">{help}</div></>;
+  else body = <><CaptainFog M={M} inst={S.inst} seed={room.seed} keeper={names[keeperOf(M)]} live={live} send={send} hold={hold} flareUntil={flareUntil} hud={hud} /><div className="floathelp">{help}</div></>;
 
   return (
     <>
-      <Sea {...scene} />
-      <main className="game">
-        <header className="top">
-          <div className="wm">Keep <em>the</em> Light</div>
-          <div className={'conn' + (live ? ' live' : '')}><i />{live ? 'Live' : 'Syncing'}</div>
-        </header>
-        {!loaded ? <p className="tiny center">Climbing the stairs…</p> : (
-          <>
-            {M.phase === 'brief' && <Brief M={M} me={me} send={send} />}
-            {M.phase === 'play' && (
-              <>
-                <Hud M={M} left={left} names={names} />
-                <div className={'rolechip ' + (isKeeper ? 'keeper' : 'captain')}>
-                  <b>{isKeeper ? 'The Keeper' : 'The Captain'}</b>
-                  <span>{M.room === 1 ? (isKeeper ? 'Your hands. Their manual.' : 'Their hands. Your manual.') : (isKeeper ? 'Your eyes. Their wheel.' : 'Their eyes. Your wheel.')}</span>
-                </div>
-                {hands !== me && <HelpBar M={M} me={me} hands={hands} send={send} names={names} />}
-                <motion.div key={shake} className="stagewrap" animate={shake ? { x: [0, -9, 9, -6, 6, 0] } : {}} transition={{ duration: 0.45 }}>
-                  {M.room === 1 && hands === me && (
-                    <>
-                      <TowerStage name={stageName(M)} inst={S.inst} M={M} act={act} hinted={hinted} />
-                      <RadioSwitch open={M.channel} onOpen={() => { buzz(25); send('channel', { m: M.n }); }} captain={names[captainOf(M)]} />
-                    </>
-                  )}
-                  {M.room === 1 && hands !== me && <ShipStage name={stageName(M)} inst={S.inst} M={M} keeper={names[keeperOf(M)]} hinted={hinted} />}
-                  {M.room === 2 && (
-                    <div className="paper"><div className="paper-h">The fog</div><p className="pintro">Room two is still being built. The light is on, and that part is next.</p></div>
-                  )}
-                </motion.div>
-                {hands === me && <HelpBar M={M} me={me} hands={hands} send={send} names={names} />}
-              </>
-            )}
-            {(M.phase === 'done' || M.phase === 'failed') && <End M={M} S={S} me={me} send={send} openLog={() => setLogOpen(true)} />}
-          </>
-        )}
-        <footer className="foot">
-          <button type="button" className="logbtn" onClick={() => setLogOpen(true)}>Logbook</button>
-          {M.phase === 'play' && <button type="button" className="link" onClick={() => { if (abortArm) { setAbortArm(false); send('newmission', { m: M.n }); } else setAbortArm(true); }}>{abortArm ? 'Tap again to call it off' : 'Call it off'}</button>}
-          <a className="link" href="../">Home</a>
-          <button type="button" className="link" onClick={onLeave}>Not you?</button>
-        </footer>
-      </main>
+      {!(playing && !isKeeper) && <Sea {...scene} shipLit={M.room === 2 || M.phase === 'done'} />}
+      {body}
       <Fx fx={fx} onDone={fxDone} />
       <AnimatePresence>{logOpen && <LogSheet log={S.log} onClose={() => setLogOpen(false)} />}</AnimatePresence>
     </>
   );
+}
+
+/* mirrors the lens angle into the window above the console */
+function BeamBridge({ beamDeg }) {
+  useEffect(() => {
+    const f = (e) => { if (e.detail && typeof e.detail.ang === 'number') beamDeg.current = e.detail.ang; };
+    window.addEventListener('lh-lens', f); return () => window.removeEventListener('lh-lens', f);
+  }, [beamDeg]);
+  return null;
 }

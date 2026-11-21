@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export const ROOM = 'light';
 const SLOT_KEY = 'datenight-khadi-manny-v1';
@@ -101,4 +101,34 @@ export function useEvents(room, me) {
   }, [room, me, add, fetchAll]);
 
   return { events, send, live, loaded };
+}
+
+/* Live link: fast, throwaway messages between the two phones (ship position, lens angle, held buttons).
+   Nothing here is saved. Anything that decides the game still goes through the event log. */
+export function useLive(room, me) {
+  const ch = useRef(null), subs = useRef({});
+  const [linked, setLinked] = useState(false);
+  useEffect(() => {
+    if (!room) return undefined;
+    const sb = getClient();
+    let c = null;
+    try {
+      c = sb.channel('live-' + room.code, { config: { broadcast: { self: false, ack: false } } });
+      c.on('broadcast', { event: '*' }, (msg) => {
+        const { event, payload } = msg || {};
+        if (!payload || payload.from === me) return;
+        (subs.current[event] || []).forEach((f) => f(payload));
+      }).subscribe((s) => setLinked(s === 'SUBSCRIBED'));
+      ch.current = c;
+    } catch { setLinked(false); }
+    return () => { try { if (c) sb.removeChannel(c); } catch { /* ignore */ } ch.current = null; };
+  }, [room, me]);
+  const emit = useCallback((event, payload) => {
+    try { if (ch.current) ch.current.send({ type: 'broadcast', event, payload: { ...payload, from: me, at: serverNow() } }); } catch { /* dropped, the next one will land */ }
+  }, [me]);
+  const on = useCallback((event, f) => {
+    (subs.current[event] = subs.current[event] || []).push(f);
+    return () => { subs.current[event] = (subs.current[event] || []).filter((g) => g !== f); };
+  }, []);
+  return useMemo(() => ({ emit, on, linked }), [emit, on, linked]);
 }

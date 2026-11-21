@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { VALVES, primeValue, shuffled, LIGHT_COLORS } from './logic.js';
 import { Btn, PinSvg, LIGHT_HEX, LIGHT_NAMES, buzz } from './ui.jsx';
+import { HoldButton } from './Controls.jsx';
+
+export const HoldSlot = ({ setHold, partnerHold, partnerName, label, held }) => <HoldButton label={label} heldLabel={held} onHold={setHold} partnerOn={partnerHold} partnerName={partnerName} />;
 
 /* The Keeper's radio. Only the Keeper can switch it on, and it never switches off. */
 export function RadioSwitch({ open, onOpen, captain }) {
@@ -169,6 +172,7 @@ export function Signal({ inst, M, act, hinted }) {
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   const rub = (e) => {
+    if (!plateRef.current) return;
     const r = plateRef.current.getBoundingClientRect();
     const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
     if (x < 0 || x > 1 || y < 0 || y > 1) return;
@@ -231,7 +235,7 @@ export function Signal({ inst, M, act, hinted }) {
   );
 }
 
-export function TowerStage({ name, inst, M, act, hinted }) {
+export function TowerStage({ name, inst, M, act, hinted, beam }) {
   const k = M.att[1] + ':' + M.stage;
   return (
     <AnimatePresence mode="wait">
@@ -239,7 +243,64 @@ export function TowerStage({ name, inst, M, act, hinted }) {
         {name === 'prime' && <Prime inst={inst} M={M} act={act} />}
         {name === 'clockwork' && <Clockwork inst={inst} M={M} act={act} hinted={hinted} />}
         {name === 'signal' && <Signal inst={inst} M={M} act={act} hinted={hinted} />}
+        {name === 'beam' && <BeamStage inst={inst} M={M} act={act} hinted={hinted} {...beam} />}
       </motion.div>
     </AnimatePresence>
+  );
+}
+
+/* ---------- Stage 4: find the ship. Her hands turn the lens, his eyes tell her where. ---------- */
+export function BeamStage({ inst, M, act, live, hinted, partnerName, myHold, partnerHold, setHold }) {
+  const [ang, setAng] = useState(0);
+  const angRef = useRef(0), dial = useRef(null), both = useRef(null), sent = useRef(false);
+  const [miss, setMiss] = useState(false);
+  useEffect(() => { const t = setInterval(() => live.emit('lens', { ang: angRef.current }), 70); return () => clearInterval(t); }, [live]);
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (myHold.current && partnerHold) {
+        if (both.current === null) both.current = performance.now();
+        if (!sent.current && performance.now() - both.current > 1200) {
+          if (Math.abs(angRef.current - inst.bearing) <= inst.tol) { sent.current = true; act('contact', { ang: angRef.current }); }
+          else { setMiss(true); both.current = performance.now() + 1500; }
+        }
+      } else both.current = null;
+    }, 100);
+    return () => clearInterval(t);
+  }, [partnerHold, act, inst, myHold]);
+  useEffect(() => { if (miss) { const t = setTimeout(() => setMiss(false), 2600); return () => clearTimeout(t); } return undefined; }, [miss]);
+  const turn = (e) => {
+    if (!dial.current) return;
+    const sv = dial.current.querySelector("svg").getBoundingClientRect();
+    const x = e.clientX - (sv.left + sv.width / 2), y = e.clientY - (sv.top + sv.height * (110 / 146));
+    const a = Math.max(-90, Math.min(90, (Math.atan2(x, -y) * 180) / Math.PI));
+    if (Math.round(a / 3) !== Math.round(angRef.current / 3)) buzz(4);
+    angRef.current = a; setAng(a); window.dispatchEvent(new CustomEvent('lh-lens', { detail: { ang: a } }));
+  };
+  return (
+    <div className="panel brass">
+      <div className="ph"><b>The great lens</b><span>The ship is out there in the dark. Turn the lens until the beam finds it.</span></div>
+      <div className="lensdial" ref={dial} onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); turn(e); }} onPointerMove={(e) => { if (e.buttons || e.pointerType === 'touch') turn(e); }} role="slider" aria-label="Lens direction" aria-valuemin={-90} aria-valuemax={90} aria-valuenow={Math.round(ang)} tabIndex={0}
+        onKeyDown={(e) => { const d = e.key === 'ArrowLeft' ? -2 : e.key === 'ArrowRight' ? 2 : 0; if (d) { const a = Math.max(-90, Math.min(90, angRef.current + d)); angRef.current = a; setAng(a); } }}>
+        <svg viewBox="-110 -110 220 146" aria-hidden="true">
+          <path d="M-100 0 A100 100 0 0 1 100 0" fill="none" stroke="#3d3018" strokeWidth="16" />
+          {Array.from({ length: 19 }, (_, i) => { const a = (-90 + i * 10) * Math.PI / 180; return <line key={i} x1={Math.sin(a) * 92} y1={-Math.cos(a) * 92} x2={Math.sin(a) * (i % 3 ? 100 : 106)} y2={-Math.cos(a) * (i % 3 ? 100 : 106)} stroke="#e4d2a6" strokeWidth={i % 3 ? 1 : 2} />; })}
+          {hinted && (() => { const a1 = (inst.bearing - 18) * Math.PI / 180, a2 = (inst.bearing + 18) * Math.PI / 180; return <path d={`M${Math.sin(a1) * 100} ${-Math.cos(a1) * 100} A100 100 0 0 1 ${Math.sin(a2) * 100} ${-Math.cos(a2) * 100}`} fill="none" stroke="#ff6b5e" strokeWidth="16" opacity=".55" />; })()}
+          <g style={{ transform: `rotate(${ang}deg)`, transformOrigin: '0 0', transformBox: 'view-box' }}>
+            <path d="M0 0 L-15 -98 L15 -98 Z" fill="rgba(255,217,138,.4)" />
+            <circle r="30" fill="#1b170e" stroke="#b98c3e" strokeWidth="4" />
+            {Array.from({ length: 8 }, (_, i) => { const a = (i * Math.PI) / 4; return <line key={i} x1={Math.sin(a) * 12} y1={-Math.cos(a) * 12} x2={Math.sin(a) * 28} y2={-Math.cos(a) * 28} stroke="#7a6030" strokeWidth="2" />; })}
+            <path d="M-11 -24 A26 26 0 0 1 11 -24 L6 -12 A13 13 0 0 0 -6 -12 Z" fill="#ffe3a6" />
+          </g>
+          <circle r="9" fill="#b98c3e" stroke="#2a1f0c" strokeWidth="2" />
+        </svg>
+        <span className="dialhint">Drag to turn</span>
+      </div>
+      {hinted && <p className="note flare">The flare lit the water for a second. The ship is somewhere inside the red arc.</p>}
+      {miss && <p className="note warn">You both held, but the beam is lighting empty water.</p>}
+      <div className="beamhold">
+        <p className="tiny">When the Captain says the light is on them, you both hold.</p>
+      </div>
+      <HoldSlot setHold={setHold} partnerHold={partnerHold} partnerName={partnerName} label="Hold the beam here" held="Holding steady" />
+    </div>
   );
 }

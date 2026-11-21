@@ -1,7 +1,7 @@
 // Keep the Light: pure game logic. Everything both phones show is derived from
 // the ordered event log plus the room seed, so the two phones can never disagree.
 
-export const STAGES = { 1: ['prime', 'clockwork', 'signal'], 2: ['rocks', 'harbor'] };
+export const STAGES = { 1: ['prime', 'clockwork', 'signal', 'beam'], 2: ['rocks', 'harbor'] };
 export const CLOCK_SECS = 600;
 export const MAX_STRIKES = 3;
 export const FLARES = 2;
@@ -279,13 +279,54 @@ export function genHarbor(seed) {
   throw new Error('harbor gen failed');
 }
 
+/* ---------------- Room 1, stage 4: find the ship with the beam ---------------- */
+export function genBeam(seed) {
+  const rnd = rngFor(seed);
+  let b = 0;
+  while (Math.abs(b) < 14) b = Math.round(-62 + rnd() * 124);
+  return { bearing: b, tol: 7 };
+}
+
+/* ---------------- the Captain's chart is old: one rock missing, one that is not there ---------------- */
+export function shortestPath(inst) {
+  const prev = new Map([[key(START.x, START.y), null]]), q = [[START.x, START.y]];
+  while (q.length) {
+    const [x, y] = q.shift();
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx, ny = y + dy, c = cellAt(inst, nx, ny);
+      const goal = c === 'g' || (c === 'b' && inst.berths.indexOf(nx) === inst.berth);
+      if (c !== 'w' && !goal) continue;
+      const r = { x: nx, y: ny, goal };
+      const k = key(r.x, r.y);
+      if (prev.has(k)) continue;
+      prev.set(k, key(x, y));
+      if (r.goal) { const out = []; let c = k; while (c) { const [a, b] = c.split(',').map(Number); out.unshift([a, b]); c = prev.get(c); } return out; }
+      q.push([r.x, r.y]);
+    }
+  }
+  return null;
+}
+export function chartErrors(inst, seed) {
+  const rnd = rngFor(seed + ':chart'), path = shortestPath(inst) || [];
+  const onPath = new Set(path.map(([x, y]) => key(x, y)));
+  const mid = path.slice(2, -2).filter(([x, y]) => cellAt(inst, x, y) === 'w' && !currentAt(inst, x, y));
+  const phantom = mid.length ? mid[Math.floor(rnd() * mid.length)] : null;
+  const near = [];
+  for (const [x, y] of path) for (const [dx, dy] of DIRS) { const nx = x + dx, ny = y + dy; const c = cellAt(inst, nx, ny); if (inb(nx, ny) && ny > 0 && (c === 'r' || c === 'boat') && !onPath.has(key(nx, ny))) near.push([nx, ny]); }
+  if (!near.length) {
+    for (let y = 1; y < H; y++) for (let x = 0; x < W; x++) { const c = cellAt(inst, x, y); if ((c === 'r' || c === 'boat') && path.some(([px, py]) => Math.abs(px - x) + Math.abs(py - y) <= 2)) near.push([x, y]); }
+  }
+  const missing = near.length ? near[Math.floor(rnd() * near.length)] : null;
+  return { phantom, missing };
+}
+
 /* ---------------- the mission reducer ---------------- */
 export function newMission(n, cfg) {
   return {
     n, phase: 'brief', cfg: { clock: !!cfg.clock, keeper: cfg.keeper === 1 ? 1 : 0 }, ready: [false, false],
     startedAt: null, endedAt: null, room: 1, att: { 1: 0, 2: 0 }, stage: 0, strikes: 0, channel: false,
     pulled: {}, lastSig: null, lastPrime: null, ask: null, hint: null, flares: 0, flareSeq: -1,
-    ship: { ...START }, trail: [], moored: false, line: [false, false], resets: 0, scrapes: 0,
+    moored: false, lastHitAt: null, resets: 0, scrapes: 0,
     debrief: [null, null], result: null, last: { seq: -1, kind: null }
   };
 }
@@ -301,12 +342,14 @@ export function instFor(base, M) {
     case 'prime': return genPrime(s);
     case 'clockwork': return genClockwork(s, 5);
     case 'signal': return genSignal(s);
+    case 'beam': return genBeam(s);
     case 'rocks': return genRocks(s);
     default: return genHarbor(s);
   }
 }
 const dsecs = (a, b) => { if (!a || !b) return null; const x = Date.parse(a), y = Date.parse(b); return isNaN(x) || isNaN(y) ? null : Math.max(0, Math.round((y - x) / 1000)); };
 export const askable = (M) => M.phase === 'play' && stageName(M) !== 'prime' && !(M.room === 2 && M.moored);
+export const STAGE_COUNT = STAGES[1].length + STAGES[2].length;
 
 export function reduce(events, baseSeed) {
   const list = events.slice().sort((a, b) => a.seq - b.seq);
@@ -318,7 +361,7 @@ export function reduce(events, baseSeed) {
     M.result = result; M.endedAt = ev.created_at || null;
     log.push({ n: M.n, result, clock: M.cfg.clock, secs: dsecs(M.startedAt, M.endedAt), resets: M.resets, scrapes: M.scrapes, flares: M.flares, date: ev.created_at || null, debrief: M.debrief, keeper: M.cfg.keeper });
   };
-  const resetStage = () => { M.pulled = {}; M.lastSig = null; M.lastPrime = null; M.ask = null; M.ship = { ...START }; M.trail = []; M.moored = false; M.line = [false, false]; };
+  const resetStage = () => { M.pulled = {}; M.lastSig = null; M.lastPrime = null; M.ask = null; M.moored = false; };
   const strike = (ev, kind, extra) => {
     M.strikes++; M.last = { seq: ev.seq, kind, ...extra };
     if (M.strikes >= MAX_STRIKES) {
@@ -375,28 +418,27 @@ export function reduce(events, baseSeed) {
       const pat = String(pl.p || '').replace(/[^SL]/g, '').slice(0, 5), col = pl.c | 0;
       if (pat === inst.pattern && col === inst.color) clear(ev);
       else { M.lastSig = { p: pat, c: col }; strike(ev, 'wrong', { what: 'signal' }); }
-    } else if (k === 'helm') {
-      if (!ctxOk(pl, p, 2, stageName(M)) || M.moored || (pl.d !== 1 && pl.d !== -1)) continue;
-      M.ship = { ...M.ship, h: (M.ship.h + pl.d + 4) % 4 }; M.last = { seq: ev.seq, kind: 'helm', d: pl.d };
-    } else if (k === 'ahead') {
-      if (!ctxOk(pl, p, 2, stageName(M)) || M.moored || (pl.n !== 1 && pl.n !== 2)) continue;
-      const [dx, dy] = DIRS[M.ship.h];
-      let done = false, path = [];
-      for (let i = 0; i < pl.n && !done; i++) {
-        const r = stepResult(inst, M.ship.x, M.ship.y, dx, dy);
-        if (r.moved || !r.blocked) { M.ship = { ...M.ship, x: r.x, y: r.y }; path.push({ x: r.x, y: r.y, drift: r.drift || 0 }); M.trail = [...M.trail, { x: r.x, y: r.y }].slice(-14); }
-        if (r.wrongBerth) { strike(ev, 'wrongberth', { berth: r.wrongBerth }); done = true; }
-        else if (r.blocked) { M.scrapes++; strike(ev, 'scrape', { hit: r.hit, drift: r.drift || 0 }); done = true; }
-        else if (r.goal) {
-          done = true;
-          if (stageName(M) === 'rocks') clear(ev);
-          else { M.moored = true; M.ask = null; M.last = { seq: ev.seq, kind: 'moored' }; }
-        } else M.last = { seq: ev.seq, kind: r.drift ? 'drift' : 'move', path, n: pl.n };
-      }
-    } else if (k === 'line') {
-      if (M.phase !== 'play' || M.room !== 2 || !M.moored || pl.a !== M.att[2] || M.line[p]) continue;
-      M.line = M.line.map((v, i) => (i === p ? true : v)); M.last = { seq: ev.seq, kind: 'line', by: p };
-      if (M.line[0] && M.line[1]) { M.phase = 'done'; M.last = { seq: ev.seq, kind: 'complete' }; logIt('complete', ev); inst = null; }
+    } else if (k === 'contact') {
+      if (!ctxOk(pl, p, 1, 'beam') || typeof pl.ang !== 'number') continue;
+      if (Math.abs(pl.ang - inst.bearing) <= inst.tol + 0.5) clear(ev);
+    } else if (k === 'hit') {
+      // the Captain's phone runs the sea; it reports when the ship takes a hit
+      if (M.phase !== 'play' || p !== captainOf(M) || pl.room !== M.room || pl.a !== M.att[M.room] || pl.s !== M.stage || M.moored) continue;
+      const at = Date.parse(ev.created_at || '');
+      if (M.lastHitAt !== null && !isNaN(at) && at - M.lastHitAt < 3500) continue;
+      if (!isNaN(at)) M.lastHitAt = at;
+      if (M.room === 2) M.scrapes++;
+      strike(ev, M.room === 1 ? 'storm' : 'scrape', { hit: pl.what || null });
+    } else if (k === 'gate') {
+      if (!ctxOk(pl, p, 2, 'rocks')) continue;
+      clear(ev);
+    } else if (k === 'moored') {
+      if (!ctxOk(pl, p, 2, 'harbor') || M.moored) continue;
+      if (pl.berth === inst.berth) { M.moored = true; M.ask = null; M.last = { seq: ev.seq, kind: 'moored' }; }
+      else strike(ev, 'wrongberth', { berth: (pl.berth | 0) + 1 });
+    } else if (k === 'tie') {
+      if (M.phase !== 'play' || M.room !== 2 || !M.moored || p !== captainOf(M) || pl.a !== M.att[2]) continue;
+      M.phase = 'done'; M.last = { seq: ev.seq, kind: 'complete' }; logIt('complete', ev); inst = null;
     } else if (k === 'debrief') {
       if ((M.phase === 'done' || M.phase === 'failed') && M.debrief[p] === null) M.debrief[p] = String(pl.text || '').trim().slice(0, 300);
     }

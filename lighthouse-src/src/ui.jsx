@@ -5,7 +5,37 @@ export const PIN_HEX = { red: '#e5483c', blue: '#3f7be0', yellow: '#f2c230', gre
 export const LIGHT_HEX = ['#fff3cf', '#ff5a4d', '#4fdc8a'];
 export const LIGHT_NAMES = ['White', 'Red', 'Green'];
 
-export const buzz = (p) => { try { if (navigator.vibrate) navigator.vibrate(p); } catch { /* not supported */ } };
+// Haptics. Android vibrates. iPhone Safari has no vibration API, but toggling a native
+// switch control gives a real haptic tick, so we keep a hidden one and click it (works on taps).
+let iosSwitch = null;
+const isIOS = typeof navigator !== 'undefined' && /iP(hone|ad|od)/.test(navigator.userAgent);
+function iosTick() {
+  try {
+    if (!iosSwitch) {
+      const l = document.createElement('label');
+      l.setAttribute('aria-hidden', 'true');
+      l.style.cssText = 'position:fixed;left:-40px;top:0;width:1px;height:1px;opacity:0;pointer-events:none';
+      const i = document.createElement('input'); i.type = 'checkbox'; i.setAttribute('switch', ''); i.tabIndex = -1;
+      l.appendChild(i); document.body.appendChild(l); iosSwitch = l;
+    }
+    iosSwitch.click();
+  } catch { /* nothing to do */ }
+}
+export const buzz = (p) => {
+  try {
+    if (navigator.vibrate && !isIOS) { navigator.vibrate(p); return; }
+    if (isIOS) { const n = Array.isArray(p) ? Math.ceil(p.length / 2) : 1; for (let k = 0; k < Math.min(n, 3); k++) setTimeout(iosTick, k * 90); }
+  } catch { /* not supported */ }
+};
+
+// Tilt steering. iPhone asks for permission once, from a tap.
+export async function askTilt() {
+  try {
+    const D = window.DeviceOrientationEvent;
+    if (D && typeof D.requestPermission === 'function') return (await D.requestPermission()) === 'granted';
+    return !!D;
+  } catch { return false; }
+}
 export const mmss = (s) => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 
 export function Pattern({ p, c, size = 1 }) {

@@ -6,10 +6,10 @@ import { useEffect, useRef } from 'react';
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 const mix = (a, b, t) => { const A = hex(a), B = hex(b); return 'rgb(' + A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',') + ')'; };
 
-export default function Sea({ storm = 0.7, fog = 0, light = false, stars = false, lighthouse = true }) {
+export default function Sea({ storm = 0.7, fog = 0, light = false, stars = false, lighthouse = true, beamRef = null, shipLit = false }) {
   const ref = useRef(null);
-  const target = useRef({ storm, fog, light, stars, lighthouse });
-  target.current = { storm, fog, light, stars, lighthouse };
+  const target = useRef({ storm, fog, light, stars, lighthouse, beamRef, shipLit });
+  target.current = { storm, fog, light, stars, lighthouse, beamRef, shipLit };
 
   useEffect(() => {
     const cv = ref.current, ctx = cv.getContext('2d');
@@ -105,6 +105,21 @@ export default function Sea({ storm = 0.7, fog = 0, light = false, stars = false
         if (S > 0.4) { ctx.strokeStyle = `rgba(220,232,245,${0.07 * S})`; ctx.lineWidth = 1.2; ctx.stroke(); }
       }
 
+      // seen from inside the tower: her own beam, fanning out over the water
+      if (m.beamRef && typeof m.beamRef.current === 'number') {
+        const a = (m.beamRef.current * Math.PI) / 180, ox = w / 2, oy = h * 1.05, len = h * 1.4;
+        const gg = ctx.createRadialGradient(ox, oy, 0, ox, oy, len);
+        gg.addColorStop(0, 'rgba(255,222,150,.55)'); gg.addColorStop(1, 'rgba(255,222,150,0)');
+        ctx.fillStyle = gg; ctx.beginPath(); ctx.moveTo(ox, oy);
+        ctx.lineTo(ox + Math.sin(a - 0.09) * len, oy - Math.cos(a - 0.09) * len); ctx.lineTo(ox + Math.sin(a + 0.09) * len, oy - Math.cos(a + 0.09) * len); ctx.closePath(); ctx.fill();
+      }
+      if (m.shipLit) {
+        const sx = w * 0.3, sy = horizon + 6, rock = Math.sin(t * 1.3) * 0.12;
+        ctx.save(); ctx.translate(sx, sy); ctx.rotate(rock);
+        ctx.fillStyle = '#1b130c'; ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(26, 0); ctx.lineTo(18, 9); ctx.lineTo(-20, 9); ctx.closePath(); ctx.fill();
+        ctx.fillRect(-2, -34, 3, 34); ctx.fillStyle = '#ffcf7a'; ctx.beginPath(); ctx.arc(0, -36, 3, 0, 7); ctx.fill();
+        ctx.restore();
+      }
       if (cur.fog > 0.01) {
         for (const f of fogs) {
           f.x += f.v * dt; if (f.x < -0.6) f.x = 1.6; if (f.x > 1.6) f.x = -0.6;

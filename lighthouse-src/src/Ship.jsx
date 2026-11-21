@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ruleText, actText } from './logic.js';
 import { Pattern } from './ui.jsx';
 
-function RadioSet({ open, keeper }) {
+export function RadioSet({ open, keeper }) {
   return (
     <div className={'radioset' + (open ? ' on' : '')}>
       <div className="grille" aria-hidden="true">{open ? <div className="wave" /> : <div className="static" />}</div>
@@ -16,7 +16,7 @@ function RadioSet({ open, keeper }) {
   );
 }
 
-function ShipLog({ keeper }) {
+export function ShipLog({ keeper }) {
   return (
     <div className="slip">
       <div className="slip-h">Ship&rsquo;s log</div>
@@ -27,12 +27,12 @@ function ShipLog({ keeper }) {
   );
 }
 
-function Manual({ inst, hinted }) {
+export function Manual({ inst, hinted }) {
   const [struck, setStruck] = useState({});
   const tog = (k) => setStruck((s) => ({ ...s, [k]: !s[k] }));
   return (
     <div className="paper">
-      <div className="paper-h">Keeper&rsquo;s Manual · Section 4 · The clockwork</div>
+      <div className="paper-h">Keeper&rsquo;s manual, section 4: the clockwork</div>
       <p className="pintro">Go down the list. The first rule that fits the tower is the one. Tap a rule to cross it out.</p>
       <ol className="rules">
         {inst.rules.map((r, i) => <li key={i} className={struck[i] ? 'struck' : ''} onClick={() => tog(i)}>{ruleText(r)}</li>)}
@@ -44,11 +44,11 @@ function Manual({ inst, hinted }) {
   );
 }
 
-function ListOfLights({ inst }) {
+export function ListOfLights({ inst }) {
   const [sel, setSel] = useState(null);
   return (
     <div className="paper">
-      <div className="paper-h">List of Lights · Northern Coast</div>
+      <div className="paper-h">List of Lights, northern coast</div>
       <p className="pintro">Find the tower they are standing in. Read them its flashes, in order, and its color.</p>
       <div className="lights">
         {inst.list.map((e, i) => (
@@ -64,10 +64,10 @@ function ListOfLights({ inst }) {
   );
 }
 
-function Standby({ keeper }) {
+export function Standby({ keeper }) {
   return (
     <div className="paper">
-      <div className="paper-h">Keeper&rsquo;s Manual · Section 1 · The lamp</div>
+      <div className="paper-h">Keeper&rsquo;s manual, section 1: the lamp</div>
       <p className="pintro">Priming the lamp is in the Keeper&rsquo;s hands. There is nothing in the manual for this part.</p>
       <p className="hand">Stand by. {keeper} has this one.</p>
     </div>
