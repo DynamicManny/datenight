@@ -29,16 +29,17 @@ body{margin:0;min-height:100vh;background:var(--ink) radial-gradient(900px 520px
 .g:active{transform:scale(.985)}
 .g:nth-child(1){transform:rotate(-1deg)}.g:nth-child(2){transform:rotate(.9deg)}.g:nth-child(3){transform:rotate(-.7deg)}
 .g:nth-child(4){transform:rotate(.6deg)}
-/* Heist: playful caper, warm night light */
-.g.hs{background:linear-gradient(165deg,#12162f,#1d2250 70%);color:#f4f5ff;border:2px solid #ffc857;overflow:hidden;position:relative}
-.g.hs::before{content:"";position:absolute;left:0;right:0;top:0;height:8px;background:linear-gradient(90deg,#ff7a6b,#ffc857,#62c8ff)}
-.g.hs::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 0% 100%,rgba(255,200,87,.22),transparent 55%),radial-gradient(circle at 100% 100%,rgba(98,200,255,.22),transparent 55%)}
-.g.hs small{color:#ffc857;display:block;margin-top:8px}
-.g.hs h2{font-family:Anton,Impact,sans-serif;font-weight:400;letter-spacing:.03em;text-transform:uppercase;font-size:2.1rem;line-height:.95;text-shadow:3px 3px 0 #d9483a,-3px -3px 0 #2f8fd0}
-.g.hs p{color:#d3d8f5;position:relative;z-index:1}
-.g.hs .halos{display:flex;gap:6px;margin-top:12px;position:relative;z-index:1}
-.g.hs .halos svg{width:34px;height:18px;color:#ffc857}.g.hs .halos svg:nth-child(3){opacity:.35}
-.g.hs .go{color:#ffc857;z-index:1}
+/* Keep the Light: night sea, a lighthouse, one sweeping beam */
+.g.lh{background:linear-gradient(180deg,#0b1830 0%,#13284a 58%,#0a182e 58%,#050b16 100%);color:#f4f1ea;border:2px solid #ffd27a;overflow:hidden;position:relative;min-height:190px}
+.g.lh small{color:#ffd27a;position:relative;z-index:2}
+.g.lh h2{font-family:Fraunces,Georgia,serif;font-weight:800;font-size:2.2rem;line-height:.95;position:relative;z-index:2;text-shadow:0 0 24px rgba(255,210,122,.35)}
+.g.lh h2 em{font-style:italic;font-weight:500;color:#ffd27a;font-size:.7em}
+.g.lh p{color:#e8ecf4;position:relative;z-index:2;max-width:62%}
+.g.lh .tower{position:absolute;right:22px;bottom:0;width:64px;height:150px;z-index:1}
+.g.lh .beam{position:absolute;right:54px;bottom:118px;width:420px;height:70px;margin-right:-6px;transform-origin:100% 50%;background:linear-gradient(270deg,rgba(255,222,150,.6),rgba(255,222,150,0));clip-path:polygon(100% 45%,0 0,0 100%,100% 55%);animation:lhsweep 5s ease-in-out infinite alternate;z-index:1;pointer-events:none}
+@keyframes lhsweep{from{transform:rotate(-14deg)}to{transform:rotate(12deg)}}
+.g.lh .go{color:#ffd27a;z-index:2;right:auto;left:18px}
+@media (prefers-reduced-motion:reduce){.g.lh .beam{animation:none}}
 .g.fn{background:linear-gradient(165deg,#24121a,#141831 60%,#0f1a2e);color:#f6efe0;border-image:linear-gradient(90deg,#ff7a6b,#ffc857,#62c8ff) 8}
 .g.fn small{color:#ffc857}.g.fn p{color:#b9bedb}.g.fn h2{font-family:Anton,Impact,sans-serif;font-weight:400;letter-spacing:.03em;text-transform:uppercase;font-size:2rem}
 .mini .gv{font-family:Anton,Impact,sans-serif;font-size:1rem;letter-spacing:.06em}.mini .gv i{font-style:normal;color:#ff7a6b}.mini .gv u{text-decoration:none;color:#62c8ff}
@@ -115,8 +116,7 @@ body{margin:0;min-height:100vh;background:var(--ink) radial-gradient(900px 520px
       <div class="tuner" aria-hidden="true"><b style="left:8px">K</b><b style="right:8px;right:auto;left:calc(100% - 46px)">M</b><span class="nd"></span><span class="lk">IN SYNC</span></div><span class="go">tune in</span></a>
     <a class="g fn" href="fight/"><small>Game three</small><h2>Fight Night</h2><p>Hot takes, one side each. Same corner or a fight?</p>
       <div class="mini"><span class="gv"><i>KHADI</i> vs <u>MANNY</u></span></div><span class="go">step in</span></a>
-    <a class="g hs" href="heist/"><small>Game four</small><h2>Operation Holy Swap</h2><p>One of you sees. One of you touches. Neither can win alone.</p>
-      <div class="halos" aria-hidden="true"><svg viewBox="0 0 24 12"><ellipse cx="12" cy="6" rx="10" ry="4" fill="none" stroke="currentColor" stroke-width="2.5"/></svg><svg viewBox="0 0 24 12"><ellipse cx="12" cy="6" rx="10" ry="4" fill="none" stroke="currentColor" stroke-width="2.5"/></svg><svg viewBox="0 0 24 12"><ellipse cx="12" cy="6" rx="10" ry="4" fill="none" stroke="currentColor" stroke-width="2.5"/></svg></div><span class="go">start the swap</span></a>
+    <a class="g lh" href="lighthouse/"><div class="beam" aria-hidden="true"></div><svg class="tower" viewBox="0 0 64 150" aria-hidden="true"><ellipse cx="32" cy="150" rx="32" ry="10" fill="#081222"/><path d="M22 146l4-100h12l4 100z" fill="#f2e8d2"/><path d="M23.2 116h17.6l.4 12H22.8zM24.4 86h15.2l.4 12H24z" fill="#d9483a"/><rect x="24" y="38" width="16" height="8" fill="#0d1a2f"/><rect x="26" y="28" width="12" height="10" rx="1" fill="#ffd27a"/><path d="M24 28l8-8 8 8z" fill="#0d1a2f"/><circle cx="32" cy="33" r="14" fill="#ffd27a" opacity=".25"/></svg><small>Game four</small><h2>Keep <em>the</em> Light</h2><p>A keeper in a dark tower. A captain in the fog. Neither gets home alone.</p><span class="go">light it</span></a>
   </div>
 </div>
 </body>
