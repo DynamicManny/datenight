@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-export const ROOM = 'light';
+export const ROOM = import.meta.env.VITE_ROOM || 'light';
 const SLOT_KEY = 'datenight-khadi-manny-v1';
 let client = null;
 let offset = 0; // server clock minus this phone's clock, learned from our own inserts
