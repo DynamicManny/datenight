@@ -29,18 +29,16 @@ body{margin:0;min-height:100vh;background:var(--ink) radial-gradient(900px 520px
 .g:active{transform:scale(.985)}
 .g:nth-child(1){transform:rotate(-1deg)}.g:nth-child(2){transform:rotate(.9deg)}.g:nth-child(3){transform:rotate(-.7deg)}
 .g:nth-child(4){transform:rotate(.6deg)}
-/* Heist: night job dossier with siren lights */
-.g.hs{background:linear-gradient(165deg,#0b0d1a,#161a33 70%);color:#f4f5ff;border:2px solid #ffc857;overflow:hidden;position:relative}
-.g.hs::before{content:"";position:absolute;left:0;right:0;top:0;height:10px;background:repeating-linear-gradient(135deg,#ffc857 0 12px,#101224 12px 24px)}
-.g.hs::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 0% 100%,rgba(255,59,78,.35),transparent 55%),radial-gradient(circle at 100% 100%,rgba(61,139,255,.35),transparent 55%);animation:hsiren 1.4s steps(2) infinite}
-@keyframes hsiren{50%{opacity:.35}}
+/* Heist: playful caper, warm night light */
+.g.hs{background:linear-gradient(165deg,#12162f,#1d2250 70%);color:#f4f5ff;border:2px solid #ffc857;overflow:hidden;position:relative}
+.g.hs::before{content:"";position:absolute;left:0;right:0;top:0;height:8px;background:linear-gradient(90deg,#ff7a6b,#ffc857,#62c8ff)}
+.g.hs::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 0% 100%,rgba(255,200,87,.22),transparent 55%),radial-gradient(circle at 100% 100%,rgba(98,200,255,.22),transparent 55%)}
 .g.hs small{color:#ffc857;display:block;margin-top:8px}
-.g.hs h2{font-family:Anton,Impact,sans-serif;font-weight:400;letter-spacing:.03em;text-transform:uppercase;font-size:2.1rem;line-height:.95;text-shadow:3px 3px 0 #ff3b4e,-3px -3px 0 #3d8bff}
+.g.hs h2{font-family:Anton,Impact,sans-serif;font-weight:400;letter-spacing:.03em;text-transform:uppercase;font-size:2.1rem;line-height:.95;text-shadow:3px 3px 0 #d9483a,-3px -3px 0 #2f8fd0}
 .g.hs p{color:#d3d8f5;position:relative;z-index:1}
-.g.hs .stars{display:flex;gap:4px;margin-top:12px;color:#ffc857;font-size:1.3rem;position:relative;z-index:1}
-.g.hs .stars i{font-style:normal;opacity:.35}.g.hs .stars i.on{opacity:1}
+.g.hs .halos{display:flex;gap:6px;margin-top:12px;position:relative;z-index:1}
+.g.hs .halos svg{width:34px;height:18px;color:#ffc857}.g.hs .halos svg:nth-child(3){opacity:.35}
 .g.hs .go{color:#ffc857;z-index:1}
-@media (prefers-reduced-motion:reduce){.g.hs::after{animation:none}}
 .g.fn{background:linear-gradient(165deg,#24121a,#141831 60%,#0f1a2e);color:#f6efe0;border-image:linear-gradient(90deg,#ff7a6b,#ffc857,#62c8ff) 8}
 .g.fn small{color:#ffc857}.g.fn p{color:#b9bedb}.g.fn h2{font-family:Anton,Impact,sans-serif;font-weight:400;letter-spacing:.03em;text-transform:uppercase;font-size:2rem}
 .mini .gv{font-family:Anton,Impact,sans-serif;font-size:1rem;letter-spacing:.06em}.mini .gv i{font-style:normal;color:#ff7a6b}.mini .gv u{text-decoration:none;color:#62c8ff}
@@ -118,7 +116,7 @@ body{margin:0;min-height:100vh;background:var(--ink) radial-gradient(900px 520px
     <a class="g fn" href="fight/"><small>Game three</small><h2>Fight Night</h2><p>Hot takes, one side each. Same corner or a fight?</p>
       <div class="mini"><span class="gv"><i>KHADI</i> vs <u>MANNY</u></span></div><span class="go">step in</span></a>
     <a class="g hs" href="heist/"><small>Game four</small><h2>Operation Holy Swap</h2><p>One of you sees. One of you touches. Neither can win alone.</p>
-      <div class="stars" aria-hidden="true"><i class="on">★</i><i class="on">★</i><i>★</i></div><span class="go">pull the job</span></a>
+      <div class="halos" aria-hidden="true"><svg viewBox="0 0 24 12"><ellipse cx="12" cy="6" rx="10" ry="4" fill="none" stroke="currentColor" stroke-width="2.5"/></svg><svg viewBox="0 0 24 12"><ellipse cx="12" cy="6" rx="10" ry="4" fill="none" stroke="currentColor" stroke-width="2.5"/></svg><svg viewBox="0 0 24 12"><ellipse cx="12" cy="6" rx="10" ry="4" fill="none" stroke="currentColor" stroke-width="2.5"/></svg></div><span class="go">start the swap</span></a>
   </div>
 </div>
 </body>
