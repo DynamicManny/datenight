@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { reduce, stageName, hintKey, askable, keeperOf, captainOf, CLOCK_SECS, MAX_STRIKES, FLARES, STAGES } from './logic.js';
+import { reduce, stageName, hintKey, askable, keeperOf, captainOf, CLOCK_SECS, MAX_STRIKES, FLARES, STAGES, awards } from './logic.js';
 import { openRoom, useEvents, useLive, loadSlot, saveSlot, clearSlot, friendly, serverNow } from './sync.js';
 import { NAMES, Btn, Lantern, FlareIcon, buzz, mmss } from './ui.jsx';
 import Sea from './Sea.jsx';
@@ -68,7 +68,9 @@ function comms(M, names) {
     channel: 'The radio crackles. Somewhere out there, a ship is listening.',
     ask: (L.by === keeperOf(M) || M.room === 1 ? k : c) + ' asked for a flare.',
     flare: 'A flare climbs into the rain and lights everything for a moment.',
-    reset: M.room === 1 ? 'Too many slips. The storm knocks the tower back to dark.' : 'The hull can’t take more. The ship pulls back to open water.',
+    reset: M.room === 1 ? 'Too many slips. This part of the tower starts over.' : 'The hull can’t take more. The ship pulls back and tries again.',
+    restart: names[L.by] + (L.scope === 'room' ? ' started the room over.' : ' called for another go at this part.'),
+    trusted: 'Straight through a rock that was only ever on the chart.',
     roomclear: 'The light is burning. Out in the fog, a ship turns toward it.',
     wrong: L.what === 'prime' ? 'The lamp coughs and gutters out.' : L.what === 'pin' ? 'Clunk. Wrong pin. The gears groan.' : 'The light blinks a pattern no ship knows.',
     clear: { clockwork: 'The lamp catches. Now the lens won\u2019t turn.', signal: 'The lens turns. Now it needs its own signal.', beam: 'The signal is set. Now find the ship in the dark.', harbor: 'Through the gate. The harbor lights are close.' }[L.stage] || 'Onward.',
@@ -87,7 +89,7 @@ function comms(M, names) {
 }
 
 const STAGE_LABEL = { prime: 'Prime the lamp', clockwork: 'Free the clockwork', signal: 'Set the signal', beam: 'Find the ship', rocks: 'Clear the rocks', harbor: 'Make harbor' };
-function Hud({ M, left, names, live }) {
+function Hud({ M, left, names, live, onMenu }) {
   const idx = M.room === 1 ? M.stage : STAGES[1].length + M.stage, total = STAGES[1].length + STAGES[2].length;
   return (
     <div className="hud">
@@ -96,7 +98,10 @@ function Hud({ M, left, names, live }) {
           {Array.from({ length: MAX_STRIKES }, (_, i) => <Lantern key={i} on={i < MAX_STRIKES - M.strikes} />)}
         </div>
         <div className={'clock' + (left !== null && left <= 60 ? ' low' : '')}>{left === null ? 'No clock' : mmss(left)}</div>
-        <div className="flares" aria-label={`${FLARES - M.flares} flares left`}><FlareIcon /><b>{FLARES - M.flares}</b></div>
+        <div className="hudright">
+          <div className="flares" aria-label={`${FLARES - M.flares} flares left`}><FlareIcon /><b>{FLARES - M.flares}</b></div>
+          <button type="button" className="menubtn" onClick={onMenu} aria-label="Rough night? Restart options"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2.5" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M12 7.5V21M7 11h10M4 15c1 4 4 6 8 6s7-2 8-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg></button>
+        </div>
       </div>
       <div className="hudrow2">
         <span className="stage">{STAGE_LABEL[stageName(M)]}</span>
@@ -200,6 +205,19 @@ function End({ M, S, me, send, openLog }) {
           <div><b>{M.flares}</b><small>Flares</small></div>
         </div>
       </motion.div>
+      {ok && (() => {
+        const entry = S.log.filter((x) => x.n === M.n).pop(), list = entry ? awards(entry) : [];
+        return list.length ? (
+          <div className="awards">
+            {list.map((a, i) => (
+              <motion.div key={a.t} className="award" initial={{ opacity: 0, y: 16, rotate: -2 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ delay: 0.5 + i * 0.25, type: 'spring', stiffness: 160, damping: 14 }}>
+                <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="17" fill="none" stroke="#ffb52e" strokeWidth="2.5" /><path d="M20 9l3 7 7 .7-5.3 4.6 1.6 7.2L20 24.8l-6.3 3.7 1.6-7.2L10 16.7l7-.7z" fill="#ffd98a" /></svg>
+                <div><b>{a.t}</b><span>{a.d}</span></div>
+              </motion.div>
+            ))}
+          </div>
+        ) : null;
+      })()}
       <div className="debrief">
         <div className="lbl">On the call</div>
         <div className="q">{S.prompt}</div>
@@ -322,6 +340,7 @@ function Game({ room, me, onLeave }) {
   const [fx, setFx] = useState(null);
   const [logOpen, setLogOpen] = useState(false);
   const [abortArm, setAbortArm] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [flareUntil, setFlareUntil] = useState(0);
   const seen = useRef(null), fxId = useRef(0), queued = useRef(null);
   const show = (o) => setFx({ ...o, id: ++fxId.current });
@@ -338,7 +357,7 @@ function Game({ room, me, onLeave }) {
     const k = M.last.kind;
     if (k === 'start') { buzz([30, 40, 30]); show(roleFx(M, me)); }
     else if (k === 'wrong' || k === 'scrape' || k === 'wrongberth' || k === 'storm') { buzz([70, 40, 90]); show({ kind: 'wrong' }); }
-    else if (k === 'reset') { buzz([120, 60, 160]); show({ kind: 'reset', title: M.room === 1 ? 'The tower goes dark' : 'Back to open water', text: 'Three slips. Fresh start, new puzzles. Breathe.' }); }
+    else if (k === 'reset') { buzz([120, 60, 160]); show({ kind: 'reset', title: M.room === 1 ? 'The lamp gutters' : 'Back to open water', text: 'Three slips. This part starts over with a new puzzle. Everything you finished stays finished.' }); }
     else if (k === 'clear') { buzz(40); show({ kind: 'clear', title: { clockwork: 'The lamp is lit', signal: 'The lens is turning', beam: 'The signal is set', harbor: 'Through the gate' }[M.last.stage] || 'Clear' }); }
     else if (k === 'roomclear') {
       // both phones play the same beam at the same moment: hers first, then it crosses his
@@ -347,6 +366,8 @@ function Game({ room, me, onLeave }) {
       buzz([40, 60, 40, 60, 120]); queued.current = roleFx(M, me);
       setTimeout(() => show({ kind: 'lighton', keeper: isKeeper }), Math.min(delay, 2500));
     }
+    else if (k === 'restart') { buzz([60, 40, 60]); setMenuOpen(false); show({ kind: 'reset', title: M.last.scope === 'room' ? 'From the top' : 'Another go', text: names[M.last.by] + (M.last.scope === 'room' ? ' started this room over. New puzzles, full lanterns.' : ' restarted this part. New puzzle, full lanterns.') }); }
+    else if (k === 'trusted') { buzz([30, 40, 30, 40, 80]); show({ kind: 'clear', title: 'You trusted the tower' }); }
     else if (k === 'flare') { buzz([20, 30, 60]); setFlareUntil(performance.now() + 7000); show({ kind: 'flare' }); }
     else if (k === 'moored') { buzz([40, 40, 40]); }
     else if (k === 'complete') { buzz([40, 60, 40, 60, 160]); show({ kind: 'complete', title: 'Home', text: 'The line is tied. The light is still turning.' }); }
@@ -380,7 +401,7 @@ function Game({ room, me, onLeave }) {
     : M.phase === 'brief' ? { storm: 0.65, light: false }
     : M.room === 1 ? { storm: 0.85, light: false, lighthouse: false, beamRef: name === 'beam' ? beamDeg : null }
     : { storm: 0.35, fog: 1, light: true };
-  const hud = playing ? <Hud M={M} left={left} names={names} live={live.linked} /> : null;
+  const hud = playing ? <Hud M={M} left={left} names={names} live={live.linked} onMenu={() => setMenuOpen(true)} /> : null;
   const help = playing ? <HelpBar M={M} me={me} hands={S.hands} send={send} names={names} /> : null;
   const foot = (
     <footer className="foot">
@@ -422,6 +443,18 @@ function Game({ room, me, onLeave }) {
       {body}
       <Fx fx={fx} onDone={fxDone} />
       <AnimatePresence>{logOpen && <LogSheet log={S.log} onClose={() => setLogOpen(false)} />}</AnimatePresence>
+      <AnimatePresence>{menuOpen && playing && (
+        <motion.div className="sheet-bg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={(e) => e.target === e.currentTarget && setMenuOpen(false)}>
+          <motion.div className="sheet rough" role="dialog" aria-modal="true" aria-label="Rough night" initial={{ y: 60 }} animate={{ y: 0 }} exit={{ y: 60 }}>
+            <h3>Rough night?</h3>
+            <p className="tiny">Either of you can call a do-over. It shows on both phones.</p>
+            <button type="button" className="rough-opt" onClick={() => send('restart', { m: M.n, scope: 'stage', a: M.att[M.room], s: M.stage })}><b>Try this part again</b><span>New puzzle, full lanterns. Everything already done stays done.</span></button>
+            <button type="button" className="rough-opt" onClick={() => send('restart', { m: M.n, scope: 'room', a: M.att[M.room], s: M.stage })}><b>Start {M.room === 1 ? 'the tower' : 'the fog'} over</b><span>Back to the first part of this room.</span></button>
+            <button type="button" className="rough-opt quiet" onClick={() => { setMenuOpen(false); send('newmission', { m: M.n }); }}><b>Call off the night</b><span>Back to the briefing. It goes in the logbook as called off.</span></button>
+            <Btn kind="ghost" onClick={() => setMenuOpen(false)}>Keep going</Btn>
+          </motion.div>
+        </motion.div>
+      )}</AnimatePresence>
     </>
   );
 }

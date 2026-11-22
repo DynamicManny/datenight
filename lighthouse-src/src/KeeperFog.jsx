@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import FogChart from './FogChart.jsx';
 import { HoldButton } from './Controls.jsx';
 import { START } from './logic.js';
@@ -7,9 +7,11 @@ import { START } from './logic.js';
 export default function KeeperFog({ M, inst, live, hold, captain, flareUntil, hud }) {
   const shipRef = useRef({ x: START.x + 0.5, y: START.y + 0.5, h: 0 });
   const beamRef = useRef(-2.4);
-  const target = useRef(null);
+  const target = useRef(null), whaleRef = useRef(null);
+  const [whaleNote, setWhaleNote] = useState(false);
   useEffect(() => { shipRef.current = { x: START.x + 0.5, y: START.y + 0.5, h: 0 }; target.current = null; }, [inst]);
   useEffect(() => live.on('ship', (p) => { target.current = p; }), [live]);
+  useEffect(() => live.on('whale', (p) => { whaleRef.current = { ...p, at: performance.now() }; setWhaleNote(true); setTimeout(() => setWhaleNote(false), 7000); }), [live]);
   // ease toward the latest position so the lantern glides instead of jumping
   useEffect(() => {
     let raf = 0;
@@ -23,7 +25,8 @@ export default function KeeperFog({ M, inst, live, hold, captain, flareUntil, hu
     <div className="play keeper">
       <div className="scene s-chart">
         {hud}
-        <FogChart inst={inst} shipRef={shipRef} beamRef={beamRef} flareUntil={flareUntil} onAim={onAim} />
+        <FogChart inst={inst} shipRef={shipRef} beamRef={beamRef} flareUntil={flareUntil} onAim={onAim} whaleRef={whaleRef} />
+        {whaleNote && <div className="whalenote">Something huge just surfaced next to them.</div>}
       </div>
       <div className="dock keeperdock">
         {M.moored

@@ -55,4 +55,14 @@ push(1, 'moored', { m: 1, a: 0, s: 1, berth: (s.inst.berth + 1) % 3 }); s = S();
 push(1, 'moored', { m: 1, a: 0, s: 1, berth: s.inst.berth }); s = S(); console.log('moored', s.M.moored);
 push(0, 'tie', { m: 1, a: 0 }); s = S(); console.log('keeper tie ignored', s.M.phase);
 push(1, 'tie', { m: 1, a: 0 }); s = S(); console.log('done', s.M.phase, s.log[0].result);
+// stage-level reset and the restart menu
+{ let e2 = [], q = 0; const P2 = (p, kind, payload) => e2.push({ seq: q++, player: p, kind, payload, created_at: new Date(t0 + q * 5000).toISOString() });
+  P2(0, 'ready', { m: 1 }); P2(1, 'ready', { m: 1 }); let r = L.reduce(e2, 'rr');
+  const sol = solvePrime(r.inst); P2(0, 'prime', { m: 1, a: 0, s: 0, v: sol }); r = L.reduce(e2, 'rr');
+  for (let i = 0; i < 3; i++) { r = L.reduce(e2, 'rr'); const wrong = [...Array(r.inst.n).keys()].find((w) => w !== r.inst.target && !r.M.pulled[w]); P2(0, 'pin', { m: 1, a: r.M.att[1], s: 1, w: wrong }); }
+  r = L.reduce(e2, 'rr'); console.log('3 strikes keeps stage:', L.stageName(r.M), 'att', r.M.att[1], 'strikes', r.M.strikes);
+  P2(1, 'restart', { m: 1, scope: 'room', a: r.M.att[1], s: r.M.stage }); r = L.reduce(e2, 'rr'); console.log('room restart ->', L.stageName(r.M), r.M.last.kind);
+  P2(0, 'restart', { m: 1, scope: 'stage', a: 0, s: 0 }); r = L.reduce(e2, 'rr'); console.log('stale restart ignored, att', r.M.att[1]);
+  console.log('awards sample', L.awards({ trusted: true, flares: 1, openedEarly: true, stormHits: 0, scrapes: 2, resets: 1, secs: 380 }).map((a) => a.t).join(' | '));
+}
 process.exit(bad || fails ? 1 : 0);

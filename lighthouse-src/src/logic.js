@@ -326,7 +326,7 @@ export function newMission(n, cfg) {
     n, phase: 'brief', cfg: { clock: !!cfg.clock, keeper: cfg.keeper === 1 ? 1 : 0 }, ready: [false, false],
     startedAt: null, endedAt: null, room: 1, att: { 1: 0, 2: 0 }, stage: 0, strikes: 0, channel: false,
     pulled: {}, lastSig: null, lastPrime: null, ask: null, hint: null, flares: 0, flareSeq: -1,
-    moored: false, lastHitAt: null, resets: 0, scrapes: 0,
+    moored: false, lastHitAt: null, resets: 0, scrapes: 0, stormHits: 0, trusted: false, openedEarly: false,
     debrief: [null, null], result: null, last: { seq: -1, kind: null }
   };
 }
@@ -359,14 +359,15 @@ export function reduce(events, baseSeed) {
   const refresh = () => { inst = instFor(baseSeed, M); };
   const logIt = (result, ev) => {
     M.result = result; M.endedAt = ev.created_at || null;
-    log.push({ n: M.n, result, clock: M.cfg.clock, secs: dsecs(M.startedAt, M.endedAt), resets: M.resets, scrapes: M.scrapes, flares: M.flares, date: ev.created_at || null, debrief: M.debrief, keeper: M.cfg.keeper });
+    log.push({ n: M.n, result, clock: M.cfg.clock, secs: dsecs(M.startedAt, M.endedAt), resets: M.resets, scrapes: M.scrapes, flares: M.flares, stormHits: M.stormHits, trusted: M.trusted, openedEarly: M.openedEarly, date: ev.created_at || null, debrief: M.debrief, keeper: M.cfg.keeper });
   };
   const resetStage = () => { M.pulled = {}; M.lastSig = null; M.lastPrime = null; M.ask = null; M.moored = false; };
   const strike = (ev, kind, extra) => {
     M.strikes++; M.last = { seq: ev.seq, kind, ...extra };
     if (M.strikes >= MAX_STRIKES) {
-      M.resets++; M.strikes = 0; M.stage = 0; M.att[M.room]++; M.hint = null; resetStage();
-      M.last = { seq: ev.seq, kind: 'reset', room: M.room }; refresh();
+      // three slips: this stage starts over with a fresh puzzle; finished stages stay finished
+      M.resets++; M.strikes = 0; M.att[M.room]++; M.hint = null; resetStage();
+      M.last = { seq: ev.seq, kind: 'reset', room: M.room, stage: stageName(M) }; refresh();
     }
   };
   const clear = (ev) => {
@@ -395,7 +396,15 @@ export function reduce(events, baseSeed) {
     } else if (k === 'timeup') {
       if (M.phase === 'play' && M.cfg.clock) { M.phase = 'failed'; M.last = { seq: ev.seq, kind: 'timeup' }; logIt('failed', ev); inst = null; }
     } else if (k === 'channel') {
-      if (M.phase === 'play' && M.room === 1 && p === keeperOf(M) && !M.channel) { M.channel = true; M.last = { seq: ev.seq, kind: 'channel' }; }
+      if (M.phase === 'play' && M.room === 1 && p === keeperOf(M) && !M.channel) { M.channel = true; M.openedEarly = M.stage === 0; M.last = { seq: ev.seq, kind: 'channel' }; }
+    } else if (k === 'restart') {
+      // either of you can call a do-over from the Rough night menu
+      if (M.phase !== 'play' || (pl.scope !== 'stage' && pl.scope !== 'room') || pl.a !== M.att[M.room] || pl.s !== M.stage) continue;
+      M.resets++; M.strikes = 0; M.att[M.room]++; M.hint = null; resetStage();
+      if (pl.scope === 'room') M.stage = 0;
+      M.last = { seq: ev.seq, kind: 'restart', scope: pl.scope, by: p }; refresh();
+    } else if (k === 'trusted') {
+      if (M.phase === 'play' && M.room === 2 && p === captainOf(M) && !M.trusted) { M.trusted = true; M.last = { seq: ev.seq, kind: 'trusted' }; }
     } else if (k === 'ask') {
       if (askable(M) && p === handsOf(M) && M.flares < FLARES && M.hint !== hintKey(M) && pl.key === hintKey(M) && !(M.room === 1 && !M.channel)) {
         M.ask = hintKey(M); M.last = { seq: ev.seq, kind: 'ask', by: p };
@@ -427,7 +436,7 @@ export function reduce(events, baseSeed) {
       const at = Date.parse(ev.created_at || '');
       if (M.lastHitAt !== null && !isNaN(at) && at - M.lastHitAt < 3500) continue;
       if (!isNaN(at)) M.lastHitAt = at;
-      if (M.room === 2) M.scrapes++;
+      if (M.room === 2) M.scrapes++; else M.stormHits++;
       strike(ev, M.room === 1 ? 'storm' : 'scrape', { hit: pl.what || null });
     } else if (k === 'gate') {
       if (!ctxOk(pl, p, 2, 'rocks')) continue;
@@ -447,4 +456,17 @@ export function reduce(events, baseSeed) {
     M, log, inst, hands: M.phase === 'play' ? handsOf(M) : null,
     prompt: DEBRIEFS[xmur3(baseSeed + ':db' + M.n)() % DEBRIEFS.length]
   };
+}
+
+/* End of night awards. Asking for help earns one on purpose. */
+export function awards(x) {
+  const out = [];
+  if (x.trusted) out.push({ t: 'Trusted the tower', d: 'Sailed straight through a rock that was only on the chart.' });
+  if (x.flares > 0) out.push({ t: 'Asked for help', d: 'Called for a flare instead of guessing alone.' });
+  if (x.openedEarly) out.push({ t: 'Let them in early', d: 'The radio went on before it was needed.' });
+  if (x.stormHits === 0) out.push({ t: 'Steady at the wheel', d: 'Not one wave over the bow.' });
+  if (x.scrapes === 0) out.push({ t: 'Not a scratch', d: 'Through the fog without touching a rock.' });
+  if (x.resets > 0) out.push({ t: 'Weathered it', d: 'Started over and still made it home.' });
+  if (x.secs !== null && x.secs < 420) out.push({ t: 'Swift as the beam', d: 'Home in under seven minutes.' });
+  return out;
 }

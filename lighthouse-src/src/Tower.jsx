@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { VALVES, primeValue, shuffled, LIGHT_COLORS } from './logic.js';
 import { Btn, PinSvg, LIGHT_HEX, LIGHT_NAMES, buzz } from './ui.jsx';
 import { HoldButton } from './Controls.jsx';
@@ -238,14 +238,12 @@ export function Signal({ inst, M, act, hinted }) {
 export function TowerStage({ name, inst, M, act, hinted, beam }) {
   const k = M.att[1] + ':' + M.stage;
   return (
-    <AnimatePresence mode="wait">
-      <motion.div key={k} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.35 }}>
+    <motion.div key={k} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
         {name === 'prime' && <Prime inst={inst} M={M} act={act} />}
         {name === 'clockwork' && <Clockwork inst={inst} M={M} act={act} hinted={hinted} />}
         {name === 'signal' && <Signal inst={inst} M={M} act={act} hinted={hinted} />}
         {name === 'beam' && <BeamStage inst={inst} M={M} act={act} hinted={hinted} {...beam} />}
-      </motion.div>
-    </AnimatePresence>
+    </motion.div>
   );
 }
 

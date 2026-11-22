@@ -341,3 +341,20 @@ h1, h2, h3 { margin: 0; font-weight: 400; }
   .lantern.on .flame, .clock.low, .static, .wave, .gauge.sputter { animation: none; }
 }
 .bowload { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--fell); font-style: italic; color: var(--mist); background: #0a1820; }
+
+/* ---------- second pass: menu, awards, notes ---------- */
+.hudright { justify-self: end; display: flex; align-items: center; gap: 10px; }
+.menubtn { pointer-events: auto; width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--rule); background: rgba(7, 19, 25, .8); color: var(--foam); display: grid; place-items: center; padding: 0; }
+.menubtn svg { width: 20px; height: 20px; }
+.rough h3 { margin-bottom: 2px; }
+.rough .tiny { text-align: left; }
+.rough-opt { display: block; width: 100%; text-align: left; margin-top: 10px; padding: 12px 14px; border-radius: 6px 18px 6px 18px; border: 1.5px solid var(--sodium); background: rgba(255, 181, 46, .08); color: var(--foam); }
+.rough-opt b { display: block; font-family: var(--fell); font-weight: 400; font-size: 1.3rem; }
+.rough-opt span { color: var(--mist); font-size: .95rem; }
+.rough-opt.quiet { border-color: var(--rule); background: transparent; }
+.awards { display: grid; gap: 8px; margin-top: 12px; }
+.award { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 6px 18px 6px 18px; background: rgba(7, 19, 25, .85); border: 1px solid rgba(255, 181, 46, .45); }
+.award svg { width: 40px; height: 40px; filter: drop-shadow(0 0 8px rgba(255, 181, 46, .5)); }
+.award b { display: block; font-family: var(--fell); font-weight: 400; font-size: 1.25rem; color: var(--glow); }
+.award span { font-size: .95rem; color: var(--mist); }
+.whalenote { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 6; padding: 8px 14px; border-radius: 999px; background: rgba(7, 19, 25, .88); border: 1px solid #9fd8e0; font-family: var(--fell); font-style: italic; font-size: 1.05rem; white-space: nowrap; }

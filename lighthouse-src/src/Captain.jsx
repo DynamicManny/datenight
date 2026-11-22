@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { S, TOWER } from './geo.js';
 const Bow3DLazy = lazy(() => import('./Bow3D.jsx'));
 const Bow3D = (p) => <Suspense fallback={<div className="bowload">Raising the mast…</div>}><Bow3DLazy {...p} /></Suspense>;
@@ -30,7 +30,8 @@ export function CaptainTower({ M, inst, seed, keeper, live, send, hinted, hold, 
   }, [M.stage, name, tower]);
   useEffect(() => live.on('lens', (p) => {
     // her lens angle, relative to the line from the tower to the ship
-    view.current.beamYaw = Math.atan2(-tower.z, -tower.x) + rad(p.ang - bearing);
+    // mirrored so that her left and your left are the same left when you talk it through
+    view.current.beamYaw = Math.atan2(-tower.z, -tower.x) - rad(p.ang - bearing);
   }), [live, tower, bearing]);
 
   useEffect(() => {
@@ -43,7 +44,7 @@ export function CaptainTower({ M, inst, seed, keeper, live, send, hinted, hold, 
       if (needle.current) needle.current.style.left = `${50 + (st.ang / 75) * 50}%`;
       if (strainBar.current) strainBar.current.style.transform = `scaleX(${st.strain / 100})`;
       if (gaugeWrap.current) gaugeWrap.current.classList.toggle('out', Math.abs(st.ang) > ZONE);
-      if (r.hit) { buzz([80, 40, 120]); c.send('hit', { m: c.M.n, a: c.M.att[1], s: c.M.stage, room: 1, what: 'storm' }); }
+      if (r.hit) { buzz([80, 40, 120]); view.current.splashAt = performance.now(); c.send('hit', { m: c.M.n, a: c.M.att[1], s: c.M.stage, room: 1, what: 'storm' }); }
       if (now - lastEmit > 200) { lastEmit = now; c.live.emit('storm', { ang: st.ang, strain: st.strain }); }
       raf = requestAnimationFrame(tick);
     };
@@ -66,8 +67,7 @@ export function CaptainTower({ M, inst, seed, keeper, live, send, hinted, hold, 
       </div>
       <div className="console">
         <RadioSet open={M.channel} keeper={keeper} />
-        <AnimatePresence mode="wait">
-          <motion.div key={M.channel ? M.att[1] + ':' + M.stage : 'closed'} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+        <motion.div key={M.channel ? M.att[1] + ':' + M.stage : 'closed'} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
             {!M.channel && <ShipLog keeper={keeper} />}
             {M.channel && name === 'prime' && <Standby keeper={keeper} />}
             {M.channel && name === 'clockwork' && <Manual inst={inst} hinted={hinted} />}
@@ -78,8 +78,7 @@ export function CaptainTower({ M, inst, seed, keeper, live, send, hinted, hold, 
                 <p className="pintro">When it is right on you, you both hold.</p>
               </div>
             )}
-          </motion.div>
-        </AnimatePresence>
+        </motion.div>
       </div>
       <div className="dock">
         <Wheel ctl={ctl} size={118} />
@@ -101,12 +100,15 @@ export function CaptainFog({ M, inst, seed, keeper, live, send, hold, flareUntil
   const view = useRef({ mode: 'fog', yawDeg: 0, tower: { x: TOWER.x * S, z: TOWER.y * S }, lightOn: true, beamYaw: -2.4, beamVisible: true, ship: newShip(), flareUntil: 0 });
   const glare = useRef(null), compass = useRef(null), speed = useRef(null);
   const name = stageName(M);
-  const ctx = useRef({}); ctx.current = { M, name, send, live };
+  const [whale, setWhale] = useState(false);
+  const ctx = useRef({}); ctx.current = { M, name, send, live, errors, setWhale, setThrottle };
+  useEffect(() => { if (window.__lhWhaled && window.__lhWhaled !== M.n) window.__lhWhaled = 0; }, [M.n]);
   useEffect(() => { view.current.flareUntil = flareUntil || 0; }, [flareUntil]);
   useEffect(() => live.on('beam', (p) => { view.current.beamYaw = p.a; }), [live]);
 
   useEffect(() => {
-    let s = newShip(), raf = 0, last = performance.now(), lastEmit = 0, done = false;
+    let s = newShip(), raf = 0, last = performance.now(), lastEmit = 0, done = false, trustedSent = false;
+    const startedAt = performance.now();
     view.current.ship = s;
     const tick = (now) => {
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -116,18 +118,21 @@ export function CaptainFog({ M, inst, seed, keeper, live, send, hold, flareUntil
         s = r.s; view.current.ship = s;
         if (r.ev) {
           const base = { m: c.M.n, a: c.M.att[2], s: c.M.stage };
-          if (r.ev.kind === 'hit') { buzz([90, 40, 140]); c.send('hit', { ...base, room: 2, what: r.ev.what }); }
+          if (r.ev.kind === 'hit') { buzz([90, 40, 140]); view.current.splashAt = performance.now(); c.send('hit', { ...base, room: 2, what: r.ev.what }); }
           else if (r.ev.kind === 'gate') { done = true; c.send('gate', base); }
           else if (r.ev.kind === 'moored') { if (r.ev.berth === inst.berth) done = true; c.send('moored', { ...base, berth: r.ev.berth }); }
         }
       }
+      const ph = ctx.current.errors && ctx.current.errors.phantom;
+      if (!trustedSent && ph && Math.floor(s.x) === ph[0] && Math.floor(s.y) === ph[1]) { trustedSent = true; c.send('trusted', { m: c.M.n }); }
+      if (c.name === 'rocks' && !window.__lhWhaled && now - startedAt > 22000) { window.__lhWhaled = c.M.n; view.current.whaleAt = now; c.live.emit('whale', { x: s.x, y: s.y }); c.setWhale(true); setTimeout(() => c.setWhale(false), 6500); }
       if (compass.current) compass.current.style.transform = `rotate(${(-s.h * 180) / Math.PI}deg)`;
       if (speed.current) speed.current.textContent = (Math.abs(s.v) < 0.02 ? 'Dead in the water' : (s.v < 0 ? 'Going astern' : s.v > 0.42 ? 'Making good speed' : s.v > 0.2 ? 'Steady' : 'Creeping'));
       if (now - lastEmit > 100) { lastEmit = now; c.live.emit('ship', { x: s.x, y: s.y, h: s.h, v: s.v }); }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    window.__lhCaptain = { set: (r, t) => { ctl.rudder.current = r; thr.current = t; }, pose: () => view.current.ship };
+    window.__lhCaptain = { set: (r, t) => { ctl.rudder.current = r; thr.current = t; ctx.current.setThrottle(t); }, pose: () => view.current.ship };
     return () => { cancelAnimationFrame(raf); delete window.__lhCaptain; };
   }, [inst, ctl.rudder]);
 
@@ -146,13 +151,12 @@ export function CaptainFog({ M, inst, seed, keeper, live, send, hold, flareUntil
           </g></svg>
           <span ref={speed} className="spd">Dead in the water</span>
         </div>
-        <AnimatePresence>
-          {chartOpen && (
-            <motion.div className="chartover" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }}>
+        {whale && <div className="whalenote">Whale off the starboard bow!</div>}
+        {chartOpen && (
+            <motion.div className="chartover" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
               <OldChart inst={inst} errors={errors} berthNote={name === 'harbor' ? 'Your berth: ' + (inst.berth + 1) : null} />
             </motion.div>
           )}
-        </AnimatePresence>
       </div>
       <div className="dock fogdock">
         <Telegraph value={throttle} onChange={setThrottle} />
